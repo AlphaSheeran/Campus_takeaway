@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单处理 - 校园外卖平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .order-card {
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .order-header {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .order-body {
+            padding: 15px;
+        }
+        .order-footer {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-top: 1px solid #eee;
+            text-align: right;
+        }
+        .dish-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .container { margin-top: 30px; }
+        .nav-btn-group { margin-bottom: 20px; text-align: right; }
+    </style>
+</head>
+<body>
+    {% include 'main/common/nav.html' %}
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="col-md-6">
+                <h3>订单处理</h3>
+            </div>
+            <div class="col-md-4">
+                <div class="input-group">
+                    <input type="text" id="searchOrderNo" class="form-control" placeholder="输入订单号搜索">
+                    <button class="btn btn-primary" id="searchBtn">搜索</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 导航按钮 -->
+        <div class="nav-btn-group">
+            <a href="{% url 'merchant:dish_list' %}" class="btn btn-outline-primary">菜品管理</a>
+            <a href="{% url 'merchant:merchant_logout' %}" class="btn btn-outline-danger ms-2">退出登录</a>
+        </div>
+
+        <!-- 订单筛选 -->
+        <div class="btn-group mb-4" role="group">
+            <button class="btn btn-primary orderFilterBtn" data-status="-1">全部订单</button>
+            <button class="btn btn-outline-primary orderFilterBtn" data-status="1">已支付（待接单）</button>
+            <button class="btn btn-outline-primary orderFilterBtn" data-status="2">已接单（待完成）</button>
+            <button class="btn btn-outline-primary orderFilterBtn" data-status="3">已完成</button>
+            <button class="btn btn-outline-primary orderFilterBtn" data-status="4">已取消</button>
+        </div>
+
+        <!-- 订单列表 -->
+        <div id="orderListContainer">
+            <!-- 动态渲染订单 -->
+        </div>
+
+        <!-- 无订单提示 -->
+        <div id="noOrderTip" class="text-center py-10 d-none">
+            <img src="https://via.placeholder.com/200x200?text=暂无订单" alt="暂无订单" class="mb-3">
+            <p class="text-muted fs-5">暂无相关订单记录</p>
+        </div>
+    </div>
+
+    <script>
+        $(function() {
+            let currentStatus = -1; // 当前筛选状态（-1=全部）
+            loadOrders(currentStatus);
+
+            // 筛选按钮点击事件
+            $('.orderFilterBtn').click(function() {
+                $('.orderFilterBtn').removeClass('btn-primary').addClass('btn-outline-primary');
+                $(this).removeClass('btn-outline-primary').addClass('btn-primary');
+                currentStatus = $(this).data('status');
+                loadOrders(currentStatus);
+            });
+
+            // 订单号搜索
+            $('#searchBtn').click(function() {
+                const orderNo = $('#searchOrderNo').val().trim();
+                loadOrders(currentStatus, orderNo);
+            });
+
+            // 订单状态更新按钮（接单/完成）
+            $(document).on('click', '.updateOrderBtn', function() {
+                const orderNo = $(this).data('order-no');
+                const targetStatus = $(this).data('target-status');
+                const statusText = targetStatus === 2 ? '接单' : '完成';
+
+                if (confirm(`确定要${statusText}订单 ${orderNo} 吗？`)) {
+                    updateOrderStatus(orderNo, targetStatus);
+                }
+            });
+
+            // ---------------------- 工具函数 ----------------------
+            function loadOrders(status = -1, orderNo = '') {
+                let url = `/merchant/order/list/api/?status=${status}`;
+                if (orderNo) url += `&order_no=${orderNo}`;
+
+                fetch(url, {
+                    method: 'GET',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const orders = data.data;
+                        if (orders.length === 0) {
+                            $('#orderListContainer').empty();
+                            $('#noOrderTip').removeClass('d-none');
+                            return;
+                        }
+
+                        $('#noOrderTip').addClass('d-none');
+                        let html = '';
+                        orders.forEach(order => {
+                            const statusText = ['待支付', '已支付', '已接单', '已完成', '已取消'][order.status];
+                            const statusClass = ['bg-warning', 'bg-primary', 'bg-info', 'bg-success', 'bg-danger'][order.status];
+                            const deliveryText = order.delivery_type === 0 ? '堂食（取餐时间：' + order.delivery_info + '）' : '外卖（配送地址：' + order.delivery_info + '）';
+                            const payText = order.pay_type === 0 ? '校园一卡通' : '微信支付';
+
+                            // 构造订单项HTML
+                            let dishHtml = '';
+                            order.items.forEach(item => {
+                                dishHtml += `
+                                    <div class="dish-item">
+                                        <span>${item.dish_name} × ${item.quantity}</span>
+                                        <span>￥${(item.price * item.quantity).toFixed(2)}</span>
+                                    </div>
+                                `;
+                            });
+
+                            // 订单操作按钮
+                            let btnHtml = '';
+                            if (order.status === 1) { // 已支付（待接单）
+                                btnHtml = `<button class="btn btn-primary btn-sm updateOrderBtn" data-order-no="${order.order_no}" data-target-status="2">确认接单</button>`;
+                            } else if (order.status === 2) { // 已接单（待完成）
+                                btnHtml = `<button class="btn btn-success btn-sm updateOrderBtn" data-order-no="${order.order_no}" data-target-status="3">标记完成</button>`;
+                            } else {
+                                btnHtml = `<button class="btn btn-outline-secondary btn-sm" disabled>无操作</button>`;
+                            }
+
+                            html += `
+                                <div class="order-card">
+                                    <div class="order-header d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h5 class="mb-0">订单号：${order.order_no}</h5>
+                                            <small class="text-muted">下单用户：${order.user_name} | 下单时间：${order.create_time}</small>
+                                        </div>
+                                        <span class="badge ${statusClass} text-white">${statusText}</span>
+                                    </div>
+                                    <div class="order-body">
+                                        <div class="mb-2">${deliveryText}</div>
+                                        <div class="mb-2">支付方式：${payText}</div>
+                                        <div class="mb-2"><strong>订单项：</strong></div>
+                                        <div class="ms-3">${dishHtml}</div>
+                                    </div>
+                                    <div class="order-footer d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>总计：￥${order.total_price.toFixed(2)}</strong>
+                                        </div>
+                                        <div>${btnHtml}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        $('#orderListContainer').html(html);
+                    } else {
+                        $('#orderListContainer').html(`<div class="text-center text-danger py-5">${data.msg}</div>`);
+                        $('#noOrderTip').addClass('d-none');
+                    }
+                });
+            }
+
+            function updateOrderStatus(orderNo, targetStatus) {
+                // 修正：添加 merchant 命名空间，匹配 name=merchant_order_update_api
+                fetch("{% url 'merchant:merchant_order_update_api' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        order_no: orderNo,
+                        status: targetStatus
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        alert(`订单${targetStatus === 2 ? '接单' : '完成'}成功！`);
+                        loadOrders(currentStatus); // 重新加载订单列表
+                    } else {
+                        alert(data.msg);
+                    }
+                })
+                .catch(error => {
+                    console.error('更新订单状态失败：', error);
+                    alert('网络错误，请重试');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="/user/">校园外卖平台</a>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                {% if request.session.user_id %}
+                <li class="nav-item"><a class="nav-link" href="/user/merchant/list/">商家列表</a></li>
+                <li class="nav-item"><a class="nav-link" href="/user/order/list/">我的订单</a></li>
+                {% endif %}
+
+                {% if request.session.merchant_id %}
+                <li class="nav-item"><a class="nav-link" href="/merchant/dish/list/">菜品管理</a></li>
+                <li class="nav-item"><a class="nav-link" href="/merchant/order/list/">订单处理</a></li>
+                {% endif %}
+
+                {% if request.session.admin_id %}
+                <li class="nav-item"><a class="nav-link" href="/admin/merchant/audit/">商家审核</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/data/stat/">数据统计</a></li>
+                {% endif %}
+            </ul>
+
+            <ul class="navbar-nav">
+                {% if request.session.user_id %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">{{ request.session.user_name }}</a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/user/profile/">个人中心</a></li>
+                        <li><a class="dropdown-item" href="/user/logout/">退出登录</a></li>
+                    </ul>
+                </li>
+                {% elif request.session.merchant_id %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">{{ request.session.merchant_name }}</a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/merchant/profile/">商户中心</a></li>
+                        <li><a class="dropdown-item" href="/merchant/logout/">退出登录</a></li>
+                    </ul>
+                </li>
+                {% elif request.session.admin_id %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">{{ request.session.admin_name }}</a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/admin/logout/">退出登录</a></li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="nav-item"><a class="nav-link" href="/user/login/">用户登录</a></li>
+                <li class="nav-item"><a class="nav-link" href="/merchant/login/">商户登录</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

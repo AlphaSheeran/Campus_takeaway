@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>菜品管理 - 校园外卖平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { margin-top: 30px; }
+        .btn-group { margin-bottom: 20px; }
+        .dish-card { margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .dish-img { height: 180px; object-fit: cover; }
+        .dish-footer { background-color: #f8f9fa; padding: 15px; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    {% include 'main/common/nav.html' %}
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>菜品管理</h3>
+            <div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDishModal">新增菜品</button>
+                <a href="{% url 'merchant:merchant_order_list' %}" class="btn btn-outline-primary ms-2">订单管理</a>
+                <a href="{% url 'merchant:merchant_logout' %}" class="btn btn-outline-danger ms-2">退出登录</a>
+            </div>
+        </div>
+
+        <!-- 菜品列表 -->
+        <div class="row" id="dishList">
+            <!-- 动态渲染菜品 -->
+        </div>
+
+        <!-- 无菜品提示 -->
+        <div id="noDishTip" class="text-center py-10 d-none">
+            <img src="https://via.placeholder.com/200x200?text=暂无菜品" alt="暂无菜品" class="mb-3">
+            <p class="text-muted fs-5">暂无菜品，点击「新增菜品」添加</p>
+        </div>
+    </div>
+
+    <!-- 新增/编辑菜品模态框 -->
+    <div class="modal fade" id="addDishModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalTitle">新增菜品</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="dishForm" enctype="multipart/form-data">
+                        <input type="hidden" id="dishId" name="id">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="dishName" class="form-label">菜品名称</label>
+                                <input type="text" class="form-control" id="dishName" name="name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="dishPrice" class="form-label">菜品价格（元）</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="dishPrice" name="price" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="dishCategory" class="form-label">菜品分类</label>
+                                <select class="form-select" id="dishCategory" name="category" required>
+                                    <option value="主食">主食</option>
+                                    <option value="配菜">配菜</option>
+                                    <option value="饮品">饮品</option>
+                                    <option value="小吃">小吃</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="dishStock" class="form-label">库存数量</label>
+                                <input type="number" min="0" class="form-control" id="dishStock" name="stock" required>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label for="dishDesc" class="form-label">菜品描述</label>
+                                <textarea class="form-control" id="dishDesc" name="description" rows="3"></textarea>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label for="dishImage" class="form-label">菜品图片</label>
+                                <input type="file" class="form-control" id="dishImage" name="image" accept="image/jpeg,image/png">
+                                <div class="mt-2" id="imagePreviewContainer" style="display: none;">
+                                    <img id="imagePreview" src="" alt="图片预览" style="width: 150px; height: 100px; object-fit: cover;">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveDishBtn">保存菜品</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(function() {
+            // 加载菜品列表
+            loadDishList();
+
+            // 图片预览
+            $('#dishImage').change(function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#imagePreview').attr('src', e.target.result);
+                        $('#imagePreviewContainer').show();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // 保存菜品（新增/编辑）
+            $('#saveDishBtn').click(function() {
+                const dishId = $('#dishId').val();
+                const formData = new FormData($('#dishForm')[0]);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                // 修正：添加 merchant 命名空间，匹配对应 API name
+                const url = dishId ? "{% url 'merchant:edit_dish_api' %}" : "{% url 'merchant:add_dish_api' %}";
+                
+                fetch(url, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        alert(dishId ? '菜品编辑成功！' : '菜品新增成功！');
+                        $('#addDishModal').modal('hide');
+                        $('#dishForm')[0].reset();
+                        $('#imagePreviewContainer').hide();
+                        loadDishList();
+                    } else {
+                        alert(data.msg);
+                    }
+                })
+                .catch(error => {
+                    console.error('操作失败：', error);
+                    alert('网络错误，请重试');
+                });
+            });
+
+            // 菜品上下架
+            $(document).on('click', '.changeStatusBtn', function() {
+                const dishId = $(this).data('id');
+                const isActive = $(this).data('active') === 1;
+                const targetStatus = isActive ? 0 : 1;
+                const statusText = isActive ? '下架' : '上架';
+
+                if (confirm(`确定要${statusText}该菜品吗？`)) {
+                    // 修正：添加 merchant 命名空间，匹配 name=change_dish_status_api
+                    fetch("{% url 'merchant:change_dish_status_api' %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ id: dishId, status: targetStatus })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.code === 1) {
+                            alert(`菜品${statusText}成功！`);
+                            loadDishList();
+                        } else {
+                            alert(data.msg);
+                        }
+                    });
+                }
+            });
+
+            // 编辑菜品
+            $(document).on('click', '.editDishBtn', function() {
+                const dishId = $(this).data('id');
+                fetch(`/merchant/dish/detail/api/?id=${dishId}`, {
+                    method: 'GET',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const dish = data.data;
+                        $('#dishId').val(dish.id);
+                        $('#dishName').val(dish.name);
+                        $('#dishPrice').val(dish.price);
+                        $('#dishCategory').val(dish.category);
+                        $('#dishStock').val(dish.stock);
+                        $('#dishDesc').val(dish.description);
+                        $('#modalTitle').text('编辑菜品');
+                        
+                        // 图片预览
+                        if (dish.image) {
+                            $('#imagePreview').attr('src', `/static/main/img/dish/${dish.image}`);
+                            $('#imagePreviewContainer').show();
+                        } else {
+                            $('#imagePreviewContainer').hide();
+                        }
+
+                        $('#addDishModal').modal('show');
+                    }
+                });
+            });
+
+            // 加载菜品列表工具函数
+            function loadDishList() {
+                fetch("{% url 'merchant:merchant_dish_list_api' %}", {
+                    method: 'GET',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const dishes = data.data;
+                        if (dishes.length === 0) {
+                            $('#dishList').empty();
+                            $('#noDishTip').removeClass('d-none');
+                            return;
+                        }
+
+                        $('#noDishTip').addClass('d-none');
+                        let html = '';
+                        dishes.forEach(dish => {
+                            const statusText = dish.status === 1 ? '上架' : '下架';
+                            const statusClass = dish.status === 1 ? 'btn-warning' : 'btn-success';
+                            const statusData = dish.status === 1 ? 1 : 0;
+                            const statusTextBtn = dish.status === 1 ? '下架' : '上架';
+
+                            html += `
+                                <div class="col-md-3">
+                                    <div class="card dish-card">
+                                        <img src="/static/main/img/dish/${dish.image || 'default_dish.jpg'}" class="card-img-top dish-img" alt="${dish.name}">
+                                        <div class="card-body">
+                                            <h5 class="card-title">${dish.name}</h5>
+                                            <p class="card-text">${dish.description || '无描述'}</p>
+                                            <p class="card-text"><strong>￥${dish.price.toFixed(2)}</strong></p>
+                                            <p class="card-text">库存：${dish.stock}份</p>
+                                            <p class="card-text">分类：${dish.category}</p>
+                                        </div>
+                                        <div class="dish-footer d-flex justify-content-between">
+                                            <button class="btn btn-sm btn-primary editDishBtn" data-id="${dish.id}">编辑</button>
+                                            <button class="btn btn-sm ${statusClass} changeStatusBtn" data-id="${dish.id}" data-active="${statusData}">${statusTextBtn}</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        $('#dishList').html(html);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

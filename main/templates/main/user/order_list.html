@@ -1,0 +1,102 @@
+{% extends 'main/base.html' %}
+
+{% block title %}我的订单 - 校园外卖{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>我的订单</h2>
+        <a href="{% url 'user:user_index' %}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> 返回首页
+        </a>
+    </div>
+
+    {% if not order_list %}
+    <!-- 无订单时的提示 -->
+    <div class="card text-center p-5 shadow-sm">
+        <div class="bi bi-box text-muted fs-5 mb-3"></div>
+        <h5 class="text-muted">暂无订单记录</h5>
+        <p class="text-muted mt-2">快去下单体验美食吧～</p>
+        <a href="{% url 'user:merchant_list' %}" class="btn btn-primary mt-3">
+            浏览商家
+        </a>
+    </div>
+    {% else %}
+    <!-- 订单列表 -->
+    <div class="list-group gap-3">
+        {% for order in order_list %}
+        <div class="card shadow-sm">
+            <!-- 订单头部信息 -->
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold">{{ order.merchant_name }}</span>
+                    <span class="ms-3 {{ order_status_map|get_item:order.order.status }}">
+                        {{ order.status_text }}
+                    </span>
+                </div>
+                <div class="text-muted small">
+                    订单号：{{ order.order.order_no }}
+                </div>
+            </div>
+
+            <!-- 订单项列表 -->
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-borderless mb-0">
+                        <thead>
+                            <tr class="border-bottom">
+                                <th>商品名称</th>
+                                <th class="text-center">单价</th>
+                                <th class="text-center">数量</th>
+                                <th class="text-end">小计</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.order_items %}
+                            <tr>
+                                <td>{{ item.dish_name }}</td>
+                                <td class="text-center">¥{{ item.price|floatformat:2 }}</td>
+                                <td class="text-center">{{ item.quantity }}</td>
+                                <td class="text-end">¥{{ item.subtotal|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 订单底部信息 -->
+            <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+                <div>
+                    <span class="text-muted">下单时间：</span>
+                    <span>{{ order.order.create_time|date:'Y-m-d H:i:s' }}</span>
+                    {% if order.order.pay_time %}
+                    <br>
+                    <span class="text-muted">支付时间：</span>
+                    <span>{{ order.order.pay_time|date:'Y-m-d H:i:s' }}</span>
+                    {% endif %}
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold fs-5 text-danger">
+                        总计：¥{{ order.order.total_price|floatformat:2 }}
+                    </div>
+                    <div class="mt-2">
+                        <a href="{% url 'user:user_order_detail' %}?order_no={{ order.order.order_no }}" 
+                           class="btn btn-sm btn-outline-secondary me-2">
+                            查看详情
+                        </a>
+                        {% if order.order.status == 0 %}
+                        <a href="{% url 'user:user_pay' %}?order_no={{ order.order.order_no }}" 
+                           class="btn btn-sm btn-success">
+                            去支付
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

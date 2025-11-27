@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商户中心 - 校园外卖平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .profile-card {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .logo-preview {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #eee;
+            margin-bottom: 15px;
+        }
+        .container { margin-top: 30px; }
+        .nav-btn-group { margin-bottom: 20px; text-align: right; }
+    </style>
+</head>
+<body>
+    {% include 'main/common/nav.html' %}
+
+    <div class="container">
+        <h3 class="mb-4">商户中心</h3>
+
+        <!-- 导航按钮 -->
+        <div class="nav-btn-group">
+            <a href="{% url 'merchant:dish_list' %}" class="btn btn-outline-primary">菜品管理</a>
+            <a href="{% url 'merchant:merchant_order_list' %}" class="btn btn-outline-primary ms-2">订单管理</a>
+            <a href="{% url 'merchant:merchant_logout' %}" class="btn btn-outline-danger ms-2">退出登录</a>
+        </div>
+
+        <div class="row">
+            <!-- 左侧：店铺信息 -->
+            <div class="col-md-4">
+                <div class="profile-card text-center">
+                    <h5 class="card-title mb-3">店铺信息</h5>
+                    <!-- 店铺Logo预览 -->
+                    <img id="logoPreview" class="logo-preview" 
+                         src="/static/main/img/merchant/{{ merchant.logo || 'default_merchant.jpg' }}" 
+                         alt="店铺Logo">
+                    <form id="logoForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="logoFile" class="form-label">更换Logo</label>
+                            <input type="file" class="form-control" id="logoFile" name="logo" accept="image/jpeg,image/png">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">上传Logo</button>
+                    </form>
+                    <div id="logoMsg" class="mt-3 text-center d-none"></div>
+                </div>
+            </div>
+
+            <!-- 右侧：基本信息修改 -->
+            <div class="col-md-8">
+                <div class="profile-card">
+                    <h5 class="card-title mb-3">基本信息</h5>
+                    <form id="merchantProfileForm">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">商户账号</label>
+                            <input type="text" class="form-control" id="username" value="{{ merchant.username }}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">店铺名称</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ merchant.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">店铺分类</label>
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="快餐" {% if merchant.category == '快餐' %}selected{% endif %}>快餐</option>
+                                <option value="奶茶" {% if merchant.category == '奶茶' %}selected{% endif %}>奶茶</option>
+                                <option value="零食" {% if merchant.category == '零食' %}selected{% endif %}>零食</option>
+                                <option value="健康轻食" {% if merchant.category == '健康轻食' %}selected{% endif %}>健康轻食</option>
+                                <option value="其他" {% if merchant.category == '其他' %}selected{% endif %}>其他</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="oldPassword" class="form-label">原密码（修改密码时填写）</label>
+                            <input type="password" class="form-control" id="oldPassword" name="old_password" placeholder="不修改请留空">
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">新密码</label>
+                            <input type="password" class="form-control" id="newPassword" name="new_password" placeholder="不修改请留空">
+                        </div>
+                        <button type="submit" class="btn btn-primary">保存修改</button>
+                    </form>
+                    <div id="profileMsg" class="mt-3 text-center d-none"></div>
+                </div>
+
+                <!-- 店铺数据统计 -->
+                <div class="profile-card">
+                    <h5 class="card-title mb-3">店铺数据统计</h5>
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="fs-4 text-primary" id="totalOrder">0</div>
+                            <div class="text-muted">总订单数</div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="fs-4 text-success" id="totalSales">0.00</div>
+                            <div class="text-muted">总销售额（元）</div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="fs-4 text-info" id="avgScore">0.0</div>
+                            <div class="text-muted">平均评分</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(function() {
+            // 页面初始化：加载商户信息和统计数据
+            loadMerchantInfo();
+            loadMerchantStats();
+
+            // 1. 上传店铺Logo
+            $('#logoForm').submit(function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                fetch("/merchant/profile/update/logo/api/", {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        $('#logoMsg').removeClass('d-none text-danger').addClass('text-success');
+                        $('#logoMsg').text('Logo上传成功！');
+                        // 刷新Logo预览
+                        $('#logoPreview').attr('src', `/static/main/img/merchant/${data.logo_name}?t=${new Date().getTime()}`);
+                        setTimeout(() => $('#logoMsg').addClass('d-none'), 2000);
+                    } else {
+                        $('#logoMsg').removeClass('d-none text-success').addClass('text-danger');
+                        $('#logoMsg').text(data.msg);
+                    }
+                })
+                .catch(error => {
+                    console.error('Logo上传失败：', error);
+                    $('#logoMsg').removeClass('d-none text-success').addClass('text-danger');
+                    $('#logoMsg').text('网络错误，请重试');
+                });
+            });
+
+            // 2. 保存商户信息
+            $('#merchantProfileForm').submit(function(e) {
+                e.preventDefault();
+                const formData = {
+                    name: $('#name').val(),
+                    category: $('#category').val(),
+                    old_password: $('#oldPassword').val(),
+                    new_password: $('#newPassword').val()
+                };
+
+                fetch("/merchant/profile/update/api/", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        $('#profileMsg').removeClass('d-none text-danger').addClass('text-success');
+                        $('#profileMsg').text('保存成功！');
+                        // 更新session中的商户名称
+                        request.session.merchant_name = formData.name;
+                        setTimeout(() => $('#profileMsg').addClass('d-none'), 2000);
+                    } else {
+                        $('#profileMsg').removeClass('d-none text-success').addClass('text-danger');
+                        $('#profileMsg').text(data.msg);
+                    }
+                });
+            });
+
+            // ---------------------- 工具函数 ----------------------
+            function loadMerchantInfo() {
+                fetch("/merchant/profile/info/api/", {
+                    method: 'GET',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const merchant = data.data;
+                        // 填充表单数据
+                        $('#username').val(merchant.username);
+                        $('#name').val(merchant.name);
+                        $('#category').val(merchant.category);
+                        // 加载Logo
+                        $('#logoPreview').attr('src', `/static/main/img/merchant/${merchant.logo || 'default_merchant.jpg'}`);
+                        // 存储商户信息到页面
+                        window.merchantInfo = merchant;
+                    }
+                });
+            }
+
+            function loadMerchantStats() {
+                fetch("/merchant/profile/stats/api/", {
+                    method: 'GET',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const stats = data.data;
+                        $('#totalOrder').text(stats.total_order);
+                        $('#totalSales').text(stats.total_sales.toFixed(2));
+                        $('#avgScore').text(stats.avg_score.toFixed(1));
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

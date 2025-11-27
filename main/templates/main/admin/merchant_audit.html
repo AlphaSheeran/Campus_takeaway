@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商家审核 - 校园外卖管理平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .audit-card { margin-bottom: 20px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
+        .audit-header { background-color: #f8f9fa; padding: 15px; border-bottom: 1px solid #eee; }
+        .audit-body { padding: 15px; }
+        .audit-footer { background-color: #f8f9fa; padding: 15px; border-top: 1px solid #eee; text-align: right; }
+    </style>
+</head>
+<body>
+    {% include 'main/common/nav.html' %}
+
+    <div class="container mt-4">
+        <div class="row justify-content-between align-items-center mb-4">
+            <div class="col-md-6">
+                <h3>商家审核</h3>
+            </div>
+            <div class="col-md-4">
+                <div class="input-group">
+                    <input type="text" id="searchMerchantName" class="form-control" placeholder="输入店铺名称搜索">
+                    <button class="btn btn-primary" id="searchBtn">搜索</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 审核列表 -->
+        <div id="auditListContainer">
+            <!-- 动态渲染待审核商家 -->
+        </div>
+
+        <!-- 无待审核商家提示 -->
+        <div id="noAuditTip" class="text-center py-10 d-none">
+            <img src="https://via.placeholder.com/200x200?text=暂无待审核商家" alt="暂无待审核商家" class="mb-3">
+            <p class="text-muted fs-5">暂无待审核的商家注册申请</p>
+        </div>
+    </div>
+
+    <script>
+        $(function() {
+            // 页面初始化加载待审核商家
+            loadAuditMerchants();
+
+            // 搜索商家
+            $('#searchBtn').click(function() {
+                const merchantName = $('#searchMerchantName').val().trim();
+                loadAuditMerchants(merchantName);
+            });
+
+            // 审核操作（通过/拒绝）
+            $(document).on('click', '.auditBtn', function() {
+                const merchantId = $(this).data('merchant-id');
+                const status = $(this).data('status'); // 1=通过，2=拒绝
+                const actionText = status === 1 ? '通过' : '拒绝';
+
+                if (confirm(`确定要${actionText}该商家的注册申请吗？`)) {
+                    submitAudit(merchantId, status);
+                }
+            });
+
+            // ---------------------- 工具函数 ----------------------
+            function loadAuditMerchants(keyword = '') {
+                let url = "{% url 'merchant_audit_api' %}";
+                if (keyword) url += `?keyword=${keyword}`;
+
+                fetch(url, {
+                    method: 'GET',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const merchants = data.data;
+                        if (merchants.length === 0) {
+                            $('#auditListContainer').empty();
+                            $('#noAuditTip').removeClass('d-none');
+                            return;
+                        }
+
+                        $('#noAuditTip').addClass('d-none');
+                        let html = '';
+                        merchants.forEach(merchant => {
+                            html += `
+                                <div class="audit-card">
+                                    <div class="audit-header d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h5 class="mb-0">${merchant.name}</h5>
+                                            <small class="text-muted">
+                                                商户账号：${merchant.username} | 注册时间：${merchant.create_time}
+                                            </small>
+                                        </div>
+                                        <span class="badge bg-warning text-white">待审核</span>
+                                    </div>
+                                    <div class="audit-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>店铺分类：</strong>${merchant.category}</p>
+                                                <p><strong>审核状态：</strong>待审核</p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>操作提示：</strong>请确认商家信息真实性后完成审核</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="audit-footer">
+                                        <button class="btn btn-success btn-sm auditBtn me-2" 
+                                                data-merchant-id="${merchant.id}" data-status="1">
+                                            审核通过
+                                        </button>
+                                        <button class="btn btn-danger btn-sm auditBtn" 
+                                                data-merchant-id="${merchant.id}" data-status="2">
+                                            审核拒绝
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        $('#auditListContainer').html(html);
+                    } else {
+                        $('#auditListContainer').html(`<div class="text-center text-danger py-5">${data.msg}</div>`);
+                        $('#noAuditTip').addClass('d-none');
+                    }
+                });
+            }
+
+            function submitAudit(merchantId, status) {
+                fetch("{% url 'merchant_audit_api' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        merchant_id: merchantId,
+                        status: status
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        alert(`审核${status === 1 ? '通过' : '拒绝'}成功！`);
+                        loadAuditMerchants(); // 重新加载审核列表
+                    } else {
+                        alert(data.msg);
+                    }
+                })
+                .catch(error => {
+                    console.error('审核提交失败：', error);
+                    alert('网络错误，请重试');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

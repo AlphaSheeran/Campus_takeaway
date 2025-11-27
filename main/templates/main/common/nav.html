@@ -1,0 +1,176 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top shadow-sm">
+    <div class="container">
+        <!-- 品牌Logo + 名称 -->
+        <!-- 修正：绝对路径改为命名空间URL -->
+        <a class="navbar-brand d-flex align-items-center" href="{% url 'user:user_index' %}">
+            <i class="bi bi-utensils-fill me-2"></i> <!-- 餐具图标 -->
+            <span>校园外卖平台</span>
+        </a>
+        
+        <!-- 移动端汉堡按钮 -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <!-- 用户端导航 -->
+                {% if request.session.user_id %}
+                <li class="nav-item mx-1">
+                    <!-- 修正：绝对路径改为命名空间URL -->
+                    <a class="nav-link {% if request.path == '/user/merchant/list/' %}active{% endif %}" 
+                       href="{% url 'user:merchant_list' %}">
+                        <i class="bi bi-shop me-1"></i>商家列表
+                    </a>
+                </li>
+                <li class="nav-item mx-1">
+                    <!-- 修正：绝对路径改为命名空间URL -->
+                    <a class="nav-link {% if '/user/order/list/' in request.path %}active{% endif %}" 
+                       href="{% url 'user:user_order_list' %}">
+                        <i class="bi bi-receipt me-1"></i>我的订单
+                    </a>
+                </li>
+                <li class="nav-item mx-1">
+                    <!-- 修正：绝对路径改为命名空间URL -->
+                    <a class="nav-link {% if request.path == '/user/profile/' %}active{% endif %}" 
+                       href="{% url 'user:user_profile' %}">
+                        <i class="bi bi-person me-1"></i>个人中心
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- 商户端导航 -->
+                {% if request.session.merchant_id %}
+                <li class="nav-item mx-1">
+                    <!-- 修正：添加merchant命名空间前缀 -->
+                    <a class="nav-link {% if '/merchant/dish/list/' in request.path %}active{% endif %}" 
+                       href="{% url 'merchant:dish_list' %}">
+                        <i class="bi bi-utensils me-1"></i>菜品管理
+                    </a>
+                </li>
+                <li class="nav-item mx-1">
+                    <!-- 修正：添加merchant命名空间前缀 -->
+                    <a class="nav-link {% if '/merchant/order/list/' in request.path %}active{% endif %}" 
+                       href="{% url 'merchant:merchant_order_list' %}">
+                        <i class="bi bi-cart-check me-1"></i>订单处理
+                    </a>
+                </li>
+                <li class="nav-item mx-1">
+                    <!-- 修正：添加merchant命名空间前缀 -->
+                    <a class="nav-link {% if request.path == '/merchant/profile/' %}active{% endif %}" 
+                       href="{% url 'merchant:merchant_profile' %}">
+                        <i class="bi bi-store me-1"></i>商户中心
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- 管理员端导航 -->
+                {% if request.session.admin_id %}
+                <li class="nav-item mx-1">
+                    <!-- 保持绝对路径（或根据管理员路由配置添加命名空间） -->
+                    <a class="nav-link {% if '/admin/merchant/audit/' in request.path %}active{% endif %}" 
+                       href="/admin/merchant/audit/">
+                        <i class="bi bi-check-circle me-1"></i>商家审核
+                    </a>
+                </li>
+                <li class="nav-item mx-1">
+                    <a class="nav-link {% if '/admin/data/stat/' in request.path %}active{% endif %}" 
+                       href="/admin/data/stat/">
+                        <i class="bi bi-bar-chart me-1"></i>数据统计
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+
+            <!-- 右侧用户信息/登录入口 -->
+            <ul class="navbar-nav">
+                {% if request.session.user_id or request.session.merchant_id or request.session.admin_id %}
+                <!-- 已登录：下拉菜单 -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" 
+                       href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-user-circle me-1"></i>
+                        {% if request.session.user_name %}{{ request.session.user_name }}{% endif %}
+                        {% if request.session.merchant_name %}{{ request.session.merchant_name }}{% endif %}
+                        {% if request.session.admin_name %}{{ request.session.admin_name }}{% endif %}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="navbarDropdown">
+                        {% if request.session.user_id %}
+                        <li><a class="dropdown-item" href="{% url 'user:user_profile' %}"><i class="bi bi-gear me-1"></i>账号设置</a></li>
+                        {% endif %}
+                        {% if request.session.merchant_id %}
+                        <li><a class="dropdown-item" href="{% url 'merchant:merchant_profile' %}"><i class="bi bi-gear me-1"></i>店铺设置</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger logout-btn" href="javascript:;">
+                                <i class="bi bi-box-arrow-right me-1"></i>退出登录
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                {% else %}
+                <!-- 未登录：登录入口（修正：添加命名空间前缀） -->
+                <li class="nav-item mx-1">
+                    <a class="nav-link" href="{% url 'user:user_login' %}">
+                        <i class="bi bi-person-plus me-1"></i>用户登录
+                    </a>
+                </li>
+                <li class="nav-item mx-1">
+                    <a class="nav-link" href="{% url 'merchant:merchant_login' %}">
+                        <i class="bi bi-store-plus me-1"></i>商户登录
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 引入Bootstrap图标库（用于导航图标） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<!-- 引入jQuery和Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+    /* 给body添加顶部内边距，避免内容被固定导航栏遮挡 */
+    body {
+        padding-top: 70px;
+    }
+    /* 导航项hover效果 */
+    .nav-link:hover {
+        color: #fff !important;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+    }
+    /* 活跃导航项样式 */
+    .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+    }
+    /* 下拉菜单项hover效果 */
+    .dropdown-item:hover {
+        background-color: #f0f7ff;
+        color: #0d6efd !important;
+    }
+</style>
+
+<script>
+    // 退出登录确认提示
+    $(function() {
+        $('.logout-btn').click(function() {
+            if (confirm('确定要退出登录吗？')) {
+                // 根据当前登录角色跳转对应退出地址（修正：添加命名空间前缀）
+                {% if request.session.user_id %}
+                window.location.href = "{% url 'user:user_logout' %}";
+                {% elif request.session.merchant_id %}
+                window.location.href = "{% url 'merchant:merchant_logout' %}";
+                {% elif request.session.admin_id %}
+                window.location.href = "/admin/logout/";
+                {% endif %}
+            }
+        });
+    });
+</script>

@@ -1,0 +1,467 @@
+<!-- merchant_list.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商家列表 - 校园外卖平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .merchant-card {
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        .merchant-card:hover {
+            transform: translateY(-5px);
+        }
+        .merchant-img {
+            height: 180px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    {% include 'main/common/nav.html' %}
+
+    <!-- 搜索栏 -->
+    <div class="container mt-4">
+        <div class="row justify-content-between align-items-center">
+            <div class="col-md-6">
+                <h3>商家列表</h3>
+            </div>
+            <div class="col-md-4">
+                <div class="input-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索商家/菜品...">
+                    <button class="btn btn-primary" id="searchBtn">搜索</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 商家卡片列表 -->
+        <div class="row mt-4" id="merchantList">
+            <!-- 动态渲染商家（JS通过API获取数据） -->
+        </div>
+    </div>
+
+    <!-- 购物车模态框（点击"加购"弹出） -->
+    <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="cartModalTitle">购物车</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>菜品名称</th>
+                                <th>单价</th>
+                                <th>数量</th>
+                                <th>小计</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartBody">
+                            <!-- 购物车数据动态渲染 -->
+                        </tbody>
+                    </table>
+                    <div class="text-end fs-5">
+                        总计：<span id="cartTotal">0.00</span> 元
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">继续购物</button>
+                    <button type="button" class="btn btn-primary" id="goCheckout">去结算</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结算模态框 -->
+    <div class="modal fade" id="checkoutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">订单结算</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="merchantId"> <!-- 存储当前商家ID -->
+                    <div class="mb-3">
+                        <label class="form-label">配送方式</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="deliveryType" id="diningIn" value="0" checked>
+                            <label class="form-check-label" for="diningIn">堂食（请选择取餐时间）</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="deliveryType" id="takeaway" value="1">
+                            <label class="form-check-label" for="takeaway">外卖（请选择地址）</label>
+                        </div>
+                    </div>
+
+                    <!-- 堂食取餐时间 -->
+                    <div id="diningTimeContainer" class="mb-3">
+                        <label for="diningTime" class="form-label">取餐时间</label>
+                        <input type="datetime-local" class="form-control" id="diningTime" required>
+                    </div>
+
+                    <!-- 外卖地址（动态加载用户地址） -->
+                    <div id="addressContainer" class="mb-3 d-none">
+                        <label class="form-label">选择地址</label>
+                        <select class="form-select" id="addressSelect" required>
+                            <!-- 地址选项动态渲染 -->
+                        </select>
+                        <a href="{% url 'user:user_profile' %}#address-tab" class="mt-1 d-block">添加新地址</a>
+                    </div>
+
+                    <!-- 支付方式 -->
+                    <div class="mb-3">
+                        <label class="form-label">支付方式</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payType" id="cardPay" value="0" checked>
+                            <label class="form-check-label" for="cardPay">校园一卡通</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payType" id="wechatPay" value="1">
+                            <label class="form-check-label" for="wechatPay">微信支付</label>
+                        </div>
+                    </div>
+
+                    <div id="checkoutMsg" class="text-center d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="submitOrder">提交订单</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS交互逻辑 -->
+    <script>
+        $(function() {
+            // 全局变量：购物车数据、当前商家ID
+            let cartData = [];
+            let currentMerchantId = 0;
+
+            // 1. 加载商家列表（页面初始化）
+            loadMerchants();
+
+            // 2. 搜索商家
+            $('#searchBtn').click(function() {
+                const keyword = $('#searchInput').val().trim();
+                loadMerchants(keyword);
+            });
+
+            // 3. 配送方式切换（堂食/外卖）
+            $('input[name="deliveryType"]').change(function() {
+                const type = $(this).val();
+                if (type === '0') { // 堂食
+                    $('#diningTimeContainer').removeClass('d-none');
+                    $('#addressContainer').addClass('d-none');
+                } else { // 外卖
+                    $('#diningTimeContainer').addClass('d-none');
+                    $('#addressContainer').removeClass('d-none');
+                    loadUserAddresses(); // 加载用户地址
+                }
+            });
+
+            // 4. 去结算按钮点击
+            $('#goCheckout').click(function() {
+                if (cartData.length === 0) {
+                    alert('购物车为空，无法结算！');
+                    return;
+                }
+                // 显示结算模态框，传递商家ID
+                $('#merchantId').val(currentMerchantId);
+                $('#checkoutModal').modal('show');
+                // 初始化取餐时间（当前时间+10分钟）
+                const now = new Date();
+                now.setMinutes(now.getMinutes() + 10);
+                $('#diningTime').val(now.toISOString().slice(0, 16));
+            });
+
+            // 5. 提交订单
+            $('#submitOrder').click(function() {
+                const merchantId = $('#merchantId').val();
+                const deliveryType = $('input[name="deliveryType"]:checked').val();
+                const payType = $('input[name="payType"]:checked').val();
+                let deliveryInfo = '';
+
+                // 验证配送信息
+                if (deliveryType === '0') { // 堂食
+                    deliveryInfo = $('#diningTime').val();
+                    if (!deliveryInfo) {
+                        alert('请选择取餐时间！');
+                        return;
+                    }
+                } else { // 外卖
+                    deliveryInfo = $('#addressSelect').val();
+                    if (!deliveryInfo) {
+                        alert('请选择地址！');
+                        return;
+                    }
+                }
+
+                // 构造订单数据
+                const orderData = {
+                    merchant_id: merchantId,
+                    delivery_type: deliveryType,
+                    delivery_info: deliveryInfo,
+                    pay_type: payType,
+                    order_items: cartData.map(item => ({
+                        dish_id: item.dishId,
+                        quantity: item.quantity,
+                        price: item.price
+                    }))
+                };
+
+                // 调用提交订单API（修正命名空间前缀）
+                fetch("{% url 'user:submit_order_api' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(orderData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        // 订单提交成功，跳转支付页（修正命名空间前缀）
+                        $('#checkoutMsg').removeClass('d-none text-danger').addClass('text-success');
+                        $('#checkoutMsg').text(`订单创建成功，订单号：${data.order_no}，跳转支付...`);
+                        setTimeout(() => {
+                            window.location.href = "{% url 'user:user_pay' %}?order_no=${data.order_no}";
+                            // 清空购物车
+                            cartData = [];
+                            $('#cartBody').empty();
+                            $('#cartTotal').text('0.00');
+                        }, 1500);
+                    } else {
+                        $('#checkoutMsg').removeClass('d-none text-success').addClass('text-danger');
+                        $('#checkoutMsg').text(data.msg);
+                    }
+                })
+                .catch(error => {
+                    console.error('提交订单失败：', error);
+                    $('#checkoutMsg').removeClass('d-none text-success').addClass('text-danger');
+                    $('#checkoutMsg').text('网络错误，请重试');
+                });
+            });
+
+            // ---------------------- 工具函数 ----------------------
+            // 加载商家列表（修正命名空间前缀）
+            function loadMerchants(keyword = '') {
+                fetch("{% url 'user:merchant_list_api' %}?keyword=" + encodeURIComponent(keyword), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const merchants = data.data;
+                        let html = '';
+                        merchants.forEach(merchant => {
+                            html += `
+                                <div class="col-md-4">
+                                    <div class="card merchant-card">
+                                        <img src="/static/main/img/merchant/${merchant.logo || 'default_merchant.jpg'}" class="card-img-top merchant-img" alt="${merchant.name}">
+                                        <div class="card-body">
+                                            <h5 class="card-title">${merchant.name}</h5>
+                                            <p class="card-text">分类：${merchant.category}</p>
+                                            <p class="card-text">评分：${merchant.score} ★</p>
+                                            <button class="btn btn-primary viewDishBtn" data-merchant-id="${merchant.id}" data-merchant-name="${merchant.name}">
+                                                查看菜品
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        $('#merchantList').html(html);
+
+                        // 绑定"查看菜品"按钮事件
+                        $('.viewDishBtn').click(function() {
+                            currentMerchantId = $(this).data('merchant-id');
+                            const merchantName = $(this).data('merchant-name');
+                            loadDishList(currentMerchantId, merchantName);
+                        });
+                    } else {
+                        $('#merchantList').html(`<div class="col-12 text-center text-danger">${data.msg}</div>`);
+                    }
+                });
+            }
+
+            // 加载商家菜品列表（弹窗显示）（修正命名空间前缀）
+            function loadDishList(merchantId, merchantName) {
+                fetch("{% url 'user:dish_list_api' %}?merchant_id=" + merchantId, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const dishes = data.data;
+                        let html = '';
+                        dishes.forEach(dish => {
+                            html += `
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        <img src="/static/main/img/dish/${dish.image || 'default_dish.jpg'}" class="card-img-top" alt="${dish.name}" style="height: 150px; object-fit: cover;">
+                                        <div class="card-body">
+                                            <h6 class="card-title">${dish.name}</h6>
+                                            <p class="card-text">￥${dish.price.toFixed(2)}</p>
+                                            <p class="card-text">库存：${dish.stock} 份</p>
+                                            <div class="input-group">
+                                                <button class="btn btn-outline-secondary minusBtn" disabled>-</button>
+                                                <input type="number" class="form-control text-center quantityInput" value="1" min="1" max="${dish.stock}">
+                                                <button class="btn btn-outline-secondary plusBtn">+</button>
+                                                <button class="btn btn-primary addToCartBtn ms-2" 
+                                                        data-dish-id="${dish.id}" 
+                                                        data-dish-name="${dish.name}" 
+                                                        data-dish-price="${dish.price}"
+                                                        data-dish-stock="${dish.stock}">
+                                                    加购
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        // 重置购物车模态框内容
+                        $('#cartModalTitle').text(`购物车 - ${merchantName}`);
+                        $('#cartModal .modal-body').html(`
+                            <div class="row">${html}</div>
+                            <div class="text-end fs-5 mt-3">
+                                总计：<span id="cartTotalTemp">0.00</span> 元
+                            </div>
+                        `);
+
+                        // 绑定菜品数量增减按钮事件
+                        $('.minusBtn').click(function() {
+                            const $input = $(this).next('.quantityInput');
+                            let val = parseInt($input.val());
+                            if (val > 1) {
+                                val--;
+                                $input.val(val);
+                                $(this).siblings('.plusBtn').prop('disabled', false);
+                            }
+                            if (val === 1) {
+                                $(this).prop('disabled', true);
+                            }
+                        });
+
+                        $('.plusBtn').click(function() {
+                            const $input = $(this).prev('.quantityInput');
+                            const max = parseInt($input.attr('max'));
+                            let val = parseInt($input.val());
+                            if (val < max) {
+                                val++;
+                                $input.val(val);
+                                $(this).siblings('.minusBtn').prop('disabled', false);
+                            }
+                            if (val === max) {
+                                $(this).prop('disabled', true);
+                            }
+                        });
+
+                        // 绑定"加购"按钮事件
+                        $('.addToCartBtn').click(function() {
+                            const dishId = $(this).data('dish-id');
+                            const dishName = $(this).data('dish-name');
+                            const dishPrice = parseFloat($(this).data('dish-price'));
+                            const quantity = parseInt($(this).siblings('.quantityInput').val());
+
+                            // 检查购物车是否已有该菜品
+                            const existIndex = cartData.findIndex(item => item.dishId === dishId);
+                            if (existIndex > -1) {
+                                cartData[existIndex].quantity += quantity;
+                            } else {
+                                cartData.push({
+                                    dishId,
+                                    dishName,
+                                    price: dishPrice,
+                                    quantity
+                                });
+                            }
+
+                            // 更新购物车显示
+                            updateCartView();
+                            alert('已加入购物车！');
+                        });
+
+                        // 显示购物车模态框
+                        $('#cartModal').modal('show');
+                    } else {
+                        alert(data.msg);
+                    }
+                });
+            }
+
+            // 更新购物车视图
+            function updateCartView() {
+                let html = '';
+                let total = 0;
+                cartData.forEach(item => {
+                    const subtotal = item.price * item.quantity;
+                    total += subtotal;
+                    html += `
+                        <tr>
+                            <td>${item.dishName}</td>
+                            <td>￥${item.price.toFixed(2)}</td>
+                            <td>${item.quantity}</td>
+                            <td>￥${subtotal.toFixed(2)}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger removeCartItem" data-dish-id="${item.dishId}">
+                                    删除
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                $('#cartBody').html(html);
+                $('#cartTotal').text(total.toFixed(2));
+                $('#cartTotalTemp').text(total.toFixed(2));
+
+                // 绑定"删除"购物车项事件
+                $('.removeCartItem').click(function() {
+                    const dishId = $(this).data('dish-id');
+                    cartData = cartData.filter(item => item.dishId !== dishId);
+                    updateCartView();
+                });
+            }
+
+            // 加载用户地址（修正命名空间前缀）
+            function loadUserAddresses() {
+                fetch("{% url 'user:address_list_api' %}", {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1) {
+                        const addresses = data.data;
+                        let html = '';
+                        addresses.forEach(addr => {
+                            html += `<option value="${addr.id}">${addr.receiver} ${addr.phone} ${addr.detail}</option>`;
+                        });
+                        $('#addressSelect').html(html);
+                    } else {
+                        $('#addressSelect').html('<option value="">暂无地址，请添加</option>');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
