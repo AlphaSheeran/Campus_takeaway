@@ -84,6 +84,17 @@ class Order(models.Model):
     create_time = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     pay_time = models.DateTimeField(blank=True, null=True, verbose_name="支付时间")
 
+    def get_status_text(self):
+        """统一订单状态文本描述"""
+        status_map = {
+            0: '待支付',
+            1: '已支付',
+            2: '已接单',
+            3: '已完成',
+            4: '已取消'
+        }
+        return status_map.get(self.status, '未知状态')
+
     class Meta:
         verbose_name = "订单"
         verbose_name_plural = "订单"

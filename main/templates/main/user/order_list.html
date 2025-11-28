@@ -1,7 +1,6 @@
+{% load custom_filters %} 
 {% extends 'main/base.html' %}
-
 {% block title %}我的订单 - 校园外卖{% endblock %}
-
 {% block content %}
 <div class="container mt-4 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -30,7 +29,7 @@
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <div>
                     <span class="fw-bold">{{ order.merchant_name }}</span>
-                    <span class="ms-3 {{ order_status_map|get_item:order.order.status }}">
+                    <span class="ms-3 {{ order.order.get_status_text }}">
                         {{ order.status_text }}
                     </span>
                 </div>
