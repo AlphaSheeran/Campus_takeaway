@@ -192,7 +192,7 @@ def user_profile(request):
 
 @user_login_required
 def user_order_list(request):
-    """用户订单列表页面（修复关联名称 + 缩进格式错误）"""
+    """用户订单列表页面"""
     # 1. 查询订单（关联商家、订单项、菜品）
     user_id = request.session['user_id']
     orders = Order.objects.filter(user_id=user_id) \
@@ -226,7 +226,7 @@ def user_order_list(request):
 
 @user_login_required
 def user_recent_orders_api(request):
-    """用户最近订单API：返回用户最近3条订单（用于首页/个人中心展示）"""
+    """用户最近订单API：返回用户最近3条订单"""
     user_id = request.session.get('user_id')
     
     # 查询用户最近3条订单（关联商家信息）
@@ -236,7 +236,7 @@ def user_recent_orders_api(request):
     
     order_list = []
     for order in orders:
-        # 查询该订单的订单项数量（用于展示"x件商品"）
+        # 查询该订单的订单项数量
         item_count = OrderItem.objects.filter(order=order).count()
         order_list.append({
             'order_no': order.order_no,
@@ -297,13 +297,13 @@ def dish_list_api(request):
 
 @user_login_required
 def address_list_api(request):
-    """用户地址列表API（修复字段错误：name→receiver）"""
+    """用户地址列表API"""
     user_id = request.session.get('user_id')
     
     addresses = Address.objects.filter(user_id=user_id)
     data = [{
         'id': a.id,
-        'receiver': a.receiver,  # 原错误：a.name（Address模型无name字段，应为receiver）
+        'receiver': a.receiver,
         'phone': a.phone,
         'detail': a.detail,
         'is_default': a.is_default
@@ -378,7 +378,7 @@ def submit_order_api(request):
             'code': 1,
             'msg': '订单创建成功',
             'order_no': order.order_no,
-            'order_id': order.id  # 新增订单ID，方便支付时使用
+            'order_id': order.id
         })
     return JsonResponse({'code': 0, 'msg': '请求方式错误'})
 
@@ -391,7 +391,7 @@ def user_order_detail(request):
         messages.error(request, "订单号不存在！")
         return redirect('user:user_order_list')
     
-    # 2. 查询订单及关联数据（预取订单项和菜品信息，优化性能）
+    # 2. 查询订单及关联数据
     try:
         order = Order.objects.filter(
             order_no=order_no, 
@@ -402,14 +402,14 @@ def user_order_detail(request):
             messages.error(request, "订单不存在或不属于当前用户！")
             return redirect('user:user_order_list')
         
-        # 3. 预计算每个订单项的小计（核心修复：避免模板算术运算）
+        # 3. 预计算每个订单项的小计
         order_items = []
         for item in OrderItem.objects.filter(order=order).select_related('dish'):
             order_items.append({
                 'dish_name': item.dish.name,
-                'price': float(item.price),  # 确保浮点数格式
+                'price': float(item.price),
                 'quantity': item.quantity,
-                'subtotal': float(item.price * item.quantity)  # 预计算小计
+                'subtotal': float(item.price * item.quantity)
             })
         
     except Exception as e:
@@ -419,7 +419,7 @@ def user_order_detail(request):
     # 4. 组织数据传递给模板
     context = {
         'order': order,
-        'order_items': order_items,  # 传递包含小计的字典列表
+        'order_items': order_items,
         'order_status_map': {
             0: '待支付',
             1: '已支付',
@@ -436,7 +436,7 @@ def user_order_list_api(request):
     """用户订单列表API（支持按状态筛选）"""
     user_id = request.session.get('user_id')
     
-    # 筛选条件：状态（0-待支付/1-已支付/2-已接单/3-已完成/4-已取消）
+    # 筛选条件：状态
     status = request.GET.get('status')
     orders = Order.objects.filter(user_id=user_id).select_related('merchant').order_by('-create_time')
     
@@ -471,17 +471,17 @@ def user_order_list_api(request):
 @user_login_required
 @ensure_csrf_cookie
 def user_pay(request):
-    """完善的用户支付功能（对接订单状态更新）"""
+    """用户支付功能"""
     user_id = request.session.get('user_id')
 
-    # GET请求：返回支付页面（携带订单号/订单ID）
+    # GET请求：返回支付页面
     if request.method == 'GET':
         order_no = request.GET.get('order_no')
         order_id = request.GET.get('order_id')
         if not (order_no or order_id):
             return HttpResponse('缺少订单号参数')
         
-        # 查询订单信息（支持按订单号或订单ID查询）
+        # 查询订单信息
         try:
             if order_no:
                 order = Order.objects.get(order_no=order_no, user_id=user_id)
@@ -490,7 +490,7 @@ def user_pay(request):
         except Order.DoesNotExist:
             return HttpResponse('订单不存在或不属于当前用户')
         
-        # 订单状态验证（只能支付待支付状态的订单）
+        # 订单状态验证
         if order.status != 0:
             status_text = {0: '待支付', 1: '已支付', 2: '已接单', 3: '已完成', 4: '已取消'}.get(order.status, '未知状态')
             return HttpResponse(f'订单状态异常（当前状态：{status_text}）')
@@ -528,7 +528,7 @@ def user_pay(request):
             return JsonResponse({
                 'code': 1,
                 'msg': '支付成功',
-                'redirect_url': '/user/order_list/'  # 支付成功跳转订单列表页
+                'redirect_url': '/user/order_list/'
             })
         except Order.DoesNotExist:
             return JsonResponse({'code': 0, 'msg': '订单不存在'})
@@ -617,15 +617,15 @@ def merchant_register_api(request):
 def merchant_logout(request):
     """商户退出登录"""
     request.session.flush()
-    return redirect('merchant_login')
+    return redirect('merchant:merchant_login')
 
 @merchant_login_required
 def merchant_profile(request):
-    """商户中心（编辑商户信息、修改密码）"""
+    """商户中心"""
     # 1. 获取当前商户信息
     merchant = get_object_or_404(Merchant, id=request.session['merchant_id'])
     
-    # 2. 处理 POST 请求（编辑信息/修改密码）
+    # 2. 处理 POST 请求
     if request.method == 'POST':
         # 2.1 编辑商户基本信息
         if 'edit_info' in request.POST:
@@ -643,7 +643,7 @@ def merchant_profile(request):
             merchant.name = merchant_name
             merchant.category = category
             merchant.phone = phone
-            merchant.description = description  # 假设Merchant模型有description字段（无则删除该行）
+            merchant.description = description
             merchant.save()
             messages.success(request, "商户信息修改成功！")
             return redirect('/merchant/profile/')
@@ -733,3 +733,321 @@ def add_dish_api(request):
                 return JsonResponse({'code': 0, 'msg': '仅支持jpg、jpeg、png、gif格式图片'})
             
             # 生成唯一文件名
+            image_name = f"dish_{uuid.uuid4().hex[:10]}.{image_ext}"
+            image_path = os.path.join(settings.STATIC_ROOT, 'dish_images', image_name)
+            os.makedirs(os.path.dirname(image_path), exist_ok=True)
+            
+            # 保存图片
+            with open(image_path, 'wb+') as f:
+                for chunk in image.chunks():
+                    f.write(chunk)
+
+        # 创建菜品
+        dish = Dish.objects.create(
+            merchant_id=merchant_id,
+            name=name,
+            category=category,
+            price=price,
+            stock=stock,
+            image=f"dish_images/{image_name}" if image_name else None,
+            status=1  # 默认上架
+        )
+
+        return JsonResponse({'code': 1, 'msg': '菜品添加成功', 'dish_id': dish.id})
+    
+    return JsonResponse({'code': 0, 'msg': '请求方式错误'})
+
+@merchant_login_required
+@ensure_csrf_cookie
+def edit_dish_api(request):
+    """编辑菜品API（支持更新基本信息和图片）"""
+    merchant_id = request.session.get('merchant_id')
+
+    if request.method == 'POST':
+        # 获取前端传递的参数
+        dish_id = request.POST.get('dish_id')
+        name = request.POST.get('name')
+        category = request.POST.get('category')
+        price = request.POST.get('price')
+        stock = request.POST.get('stock')
+        status = request.POST.get('status')  # 可选：是否同步更新上下架状态
+        image = request.FILES.get('image')  # 可选：新图片
+
+        # 基础参数验证
+        if not (dish_id and name and category and price and stock):
+            return JsonResponse({'code': 0, 'msg': '参数不完整（需包含菜品ID、名称、分类、价格、库存）'})
+
+        # 验证菜品是否存在且属于当前商户
+        try:
+            dish = Dish.objects.get(id=dish_id, merchant_id=merchant_id)
+        except Dish.DoesNotExist:
+            return JsonResponse({'code': 0, 'msg': '菜品不存在或无权限编辑'})
+
+        # 验证价格和库存为有效数字（修正缩进错误）
+        try:
+            price = float(price)
+            stock = int(stock)
+            if price <= 0 or stock < 0:
+                return JsonResponse({'code': 0, 'msg': '价格必须大于0，库存不能为负数'})
+        except ValueError:
+            return JsonResponse({'code': 0, 'msg': '价格请输入数字，库存请输入整数'})
+
+        # 处理图片（如有新图片上传）
+        if image:
+            # 验证图片格式
+            allowed_ext = ['jpg', 'jpeg', 'png', 'gif']
+            image_ext = image.name.split('.')[-1].lower()
+            if image_ext not in allowed_ext:
+                return JsonResponse({'code': 0, 'msg': '仅支持jpg、jpeg、png、gif格式图片'})
+            
+            # 生成唯一文件名（避免重复）
+            image_name = f"dish_{uuid.uuid4().hex[:10]}.{image_ext}"
+            # 保存路径（假设项目static目录下有dish_images文件夹）
+            image_path = os.path.join(settings.STATIC_ROOT, 'dish_images', image_name)
+            os.makedirs(os.path.dirname(image_path), exist_ok=True)  # 确保目录存在
+            
+            # 保存图片
+            with open(image_path, 'wb+') as f:
+                for chunk in image.chunks():
+                    f.write(chunk)
+            dish.image = f"dish_images/{image_name}"  # 更新图片路径
+
+        # 更新菜品基本信息
+        dish.name = name
+        dish.category = category
+        dish.price = price
+        dish.stock = stock
+        if status is not None:  # 如传递了status参数，同步更新上下架状态
+            dish.status = int(status)
+        dish.save()
+
+        return JsonResponse({'code': 1, 'msg': '菜品更新成功', 'dish_id': dish.id})
+    
+    return JsonResponse({'code': 0, 'msg': '请求方式错误（仅支持POST）'})
+
+@merchant_login_required
+@ensure_csrf_cookie
+def change_dish_status_api(request):
+    """修改菜品状态API（上下架切换）"""
+    merchant_id = request.session.get('merchant_id')
+
+    if request.method == 'POST':
+        # 获取前端参数（菜品ID + 目标状态）
+        data = json.loads(request.body)
+        dish_id = data.get('dish_id')
+        target_status = data.get('status')  # 1=上架，0=下架
+
+        # 基础参数验证
+        if dish_id is None or target_status not in [0, 1]:
+            return JsonResponse({'code': 0, 'msg': '参数错误（菜品ID不能为空，状态只能是0或1）'})
+
+        # 验证菜品是否存在且属于当前商户
+        try:
+            dish = Dish.objects.get(id=dish_id, merchant_id=merchant_id)
+        except Dish.DoesNotExist:
+            return JsonResponse({'code': 0, 'msg': '菜品不存在或无权限操作'})
+
+        # 更新菜品状态
+        dish.status = target_status
+        dish.save()
+
+        # 返回结果（包含当前状态文本）
+        status_text = '上架' if target_status == 1 else '下架'
+        return JsonResponse({
+            'code': 1,
+            'msg': f'菜品已成功{status_text}',
+            'dish_id': dish.id,
+            'current_status': target_status,
+            'status_text': status_text
+        })
+    
+    return JsonResponse({'code': 0, 'msg': '请求方式错误（仅支持POST）'})
+
+# 新增：商户订单列表页面
+@merchant_login_required
+def merchant_order_list(request):
+    """商户订单列表页面"""
+    merchant_id = request.session.get('merchant_id')
+    
+    # 查询当前商户的所有订单（关联用户、订单项、菜品）
+    orders = Order.objects.filter(merchant_id=merchant_id) \
+        .select_related('user') \
+        .prefetch_related('items__dish') \
+        .order_by('-create_time')
+    
+    # 构建订单数据（供模板渲染）
+    order_list = []
+    for order in orders:
+        order_items = []
+        for item in order.items.all():
+            order_items.append({
+                'dish_name': item.dish.name,
+                'price': float(item.price),
+                'quantity': item.quantity,
+                'subtotal': float(item.price * item.quantity)
+            })
+        order_list.append({
+            'order': order,
+            'user_name': order.user.name,
+            'user_phone': order.user.phone,
+            'order_items': order_items,
+            'status_text': {
+                0: '待支付',
+                1: '已支付',
+                2: '已接单',
+                3: '已完成',
+                4: '已取消'
+            }.get(order.status, '未知状态'),
+            'status_class': {
+                0: 'badge bg-warning',
+                1: 'badge bg-info',
+                2: 'badge bg-primary',
+                3: 'badge bg-success',
+                4: 'badge bg-danger'
+            }.get(order.status, 'badge bg-secondary')
+        })
+    
+    return render(request, 'main/merchant/order_list.html', {
+        'order_list': order_list
+    })
+
+# 新增：商户更新订单状态API
+@merchant_login_required
+@ensure_csrf_cookie
+def merchant_order_update_api(request):
+    """商户更新订单状态API（接单/完成/取消）"""
+    merchant_id = request.session.get('merchant_id')
+    
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        order_id = data.get('order_id')
+        target_status = data.get('status')  # 2=已接单，3=已完成，4=已取消（商户仅能操作这三个状态）
+        
+        # 验证参数
+        if order_id is None or target_status not in [2, 3, 4]:
+            return JsonResponse({'code': 0, 'msg': '参数错误（订单ID不能为空，状态只能是2/3/4）'})
+        
+        # 验证订单是否存在且属于当前商户
+        try:
+            order = Order.objects.get(id=order_id, merchant_id=merchant_id)
+        except Order.DoesNotExist:
+            return JsonResponse({'code': 0, 'msg': '订单不存在或无权限操作'})
+        
+        # 验证状态流转合法性（避免非法状态变更）
+        valid_status_flow = {
+            1: [2, 4],    # 已支付 → 可接单/取消
+            2: [3, 4],    # 已接单 → 可完成/取消
+            3: [],        # 已完成 → 不可变更
+            4: [],        # 已取消 → 不可变更
+            0: []         # 待支付 → 商户不可操作
+        }
+        if target_status not in valid_status_flow.get(order.status, []):
+            current_status_text = {0: '待支付', 1: '已支付', 2: '已接单', 3: '已完成', 4: '已取消'}.get(order.status)
+            target_status_text = {2: '已接单', 3: '已完成', 4: '已取消'}.get(target_status)
+            return JsonResponse({'code': 0, 'msg': f'非法状态变更（当前：{current_status_text} → 目标：{target_status_text}）'})
+        
+        # 更新订单状态
+        order.status = target_status
+        order.save()
+        
+        status_text = {2: '接单', 3: '完成', 4: '取消'}.get(target_status)
+        return JsonResponse({'code': 1, 'msg': f'订单已成功{status_text}', 'order_id': order.id})
+    
+    return JsonResponse({'code': 0, 'msg': '请求方式错误（仅支持POST）'})
+
+# ---------------------- 管理员端视图 ----------------------
+def admin_login(request):
+    """管理员登录页面"""
+    return render(request, 'main/admin/login.html')
+
+@ensure_csrf_cookie
+def admin_login_api(request):
+    """管理员登录API"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+
+        try:
+            admin = Admin.objects.get(username=username)
+        except Admin.DoesNotExist:
+            return JsonResponse({'code': 0, 'msg': '管理员账号不存在'})
+
+        if not check_password(password, admin.password):
+            return JsonResponse({'code': 0, 'msg': '密码错误'})
+
+        # 设置管理员Session
+        request.session['admin_id'] = admin.id
+        request.session['admin_name'] = admin.username
+        return JsonResponse({'code': 1, 'msg': '登录成功'})
+    return JsonResponse({'code': 0, 'msg': '请求方式错误'})
+
+@admin_login_required
+def admin_logout(request):
+    """管理员退出登录"""
+    request.session.flush()
+    return redirect('admin_login')
+
+@admin_login_required
+def merchant_audit(request):
+    """商户审核页面"""
+    return render(request, 'main/admin/merchant_audit.html')
+
+@admin_login_required
+@ensure_csrf_cookie
+def merchant_audit_api(request):
+    """商户审核API（查询待审核商户 + 处理审核结果）"""
+    if request.method == 'GET':
+        # 查询所有待审核商户（status=0）
+        merchants = Merchant.objects.filter(status=0).order_by('-create_time')
+        data = [{
+            'id': m.id,
+            'username': m.username,
+            'name': m.name,
+            'category': m.category,
+            'create_time': m.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'phone': m.phone or '未填写'
+        } for m in merchants]
+        return JsonResponse({'code': 1, 'data': data})
+    
+    elif request.method == 'POST':
+        # 处理审核结果（通过/拒绝）
+        data = json.loads(request.body)
+        merchant_id = data.get('merchant_id')
+        audit_result = data.get('result')  # 1=通过，2=拒绝
+
+        if merchant_id is None or audit_result not in [1, 2]:
+            return JsonResponse({'code': 0, 'msg': '参数错误（商户ID不能为空，结果只能是1或2）'})
+
+        try:
+            merchant = Merchant.objects.get(id=merchant_id, status=0)
+        except Merchant.DoesNotExist:
+            return JsonResponse({'code': 0, 'msg': '商户不存在或已审核'})
+
+        # 更新商户状态
+        merchant.status = audit_result
+        merchant.save()
+
+        result_text = '通过' if audit_result == 1 else '拒绝'
+        return JsonResponse({'code': 1, 'msg': f'审核{result_text}成功', 'merchant_id': merchant.id})
+    
+    return JsonResponse({'code': 0, 'msg': '请求方式错误'})
+
+@admin_login_required
+def data_stat(request):
+    """数据统计页面（简单实现）"""
+    # 统计核心数据
+    total_users = User.objects.count()  # 总用户数
+    total_merchants = Merchant.objects.count()  # 总商户数
+    total_approved_merchants = Merchant.objects.filter(status=1).count()  # 已通过商户数
+    total_orders = Order.objects.count()  # 总订单数
+    total_sales = Order.objects.filter(status__in=[1,2,3]).aggregate(total=Sum('total_price'))['total'] or 0  # 总销售额（已支付/已接单/已完成）
+
+    context = {
+        'total_users': total_users,
+        'total_merchants': total_merchants,
+        'total_approved_merchants': total_approved_merchants,
+        'total_orders': total_orders,
+        'total_sales': round(float(total_sales), 2)
+    }
+    return render(request, 'main/admin/data_stat.html', context)
