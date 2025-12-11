@@ -19,9 +19,10 @@ user_urlpatterns = [
     path('order/recent/api/', views.user_recent_orders_api, name='user_recent_orders_api'),  # 最近订单API
     path('pay/', views.user_pay, name='user_pay'),  # /user/pay/
     path('profile/', views.user_profile, name='user_profile'),  # /user/profile/
+
 ]
 
-# ---------------------- 2. 商户端路由（保持不变） ----------------------
+# ---------------------- 2. 商户端路由（添加dish_detail_api路由） ----------------------
 merchant_urlpatterns = [
     path('login/', views.merchant_login, name='merchant_login'),
     path('login/api/', views.merchant_login_api, name='merchant_login_api'),
@@ -30,9 +31,12 @@ merchant_urlpatterns = [
     path('logout/', views.merchant_logout, name='merchant_logout'),
     path('dish/list/', views.dish_list, name='dish_list'),
     path('dish/list/api/', views.merchant_dish_list_api, name='merchant_dish_list_api'),
+    # 添加菜品详情API路由（用于编辑菜品时获取数据）
+    path('dish/detail/api/', views.dish_detail_api, name='dish_detail_api'),
     path('add/dish/api/', views.add_dish_api, name='add_dish_api'),
     path('edit/dish/api/', views.edit_dish_api, name='edit_dish_api'),
     path('change/dish/status/api/', views.change_dish_status_api, name='change_dish_status_api'),
+    path('delete/dish/api/', views.delete_dish_api, name='delete_dish_api'),
     path('order/list/', views.merchant_order_list, name='merchant_order_list'),
     path('order/update/api/', views.merchant_order_update_api, name='merchant_order_update_api'),
     path('profile/', views.merchant_profile, name='merchant_profile'),  # 商户中心

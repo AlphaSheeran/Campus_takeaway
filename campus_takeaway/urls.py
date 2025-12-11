@@ -8,6 +8,8 @@ urlpatterns = [
     path('', include('main.urls')),   # 主应用URL
 ]
 
-# 开发环境下提供静态文件访问（生产环境需Nginx配置）
 if settings.DEBUG:
+    # 静态文件访问配置
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+    # 媒体文件（用户上传的图片等）访问配置
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

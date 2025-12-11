@@ -313,7 +313,7 @@
                             html += `
                                 <div class="col-md-4 mb-3">
                                     <div class="card h-100">
-                                        <img src="/static/main/img/dish/${dish.image || 'default_dish.jpg'}" class="card-img-top" alt="${dish.name}" style="height: 150px; object-fit: cover;">
+                                        <img src="${dish.image_url || '/static/img/default-dish.jpg'}" class="card-img-top" alt="${dish.name}" style="height: 150px; object-fit: cover;">
                                         <div class="card-body">
                                             <h6 class="card-title">${dish.name}</h6>
                                             <p class="card-text">￥${dish.price.toFixed(2)}</p>

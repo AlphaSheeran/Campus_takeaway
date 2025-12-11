@@ -1,15 +1,31 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{% block title %}校园外卖平台{% endblock %}</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-        {% block extra_css %}{% endblock %}
-    </head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}校园外卖平台{% endblock %}</title>
+    <!-- 引入 Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入 Bootstrap Icons CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+    <!-- 基础样式：确保主体内容不被导航遮挡 -->
+    <style>
+        body {
+            margin: 0;
+            padding-top: 70px; /* 适配固定导航栏 */
+        }
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+        }
+    </style>
+</head>
 <body>
-    <!-- 导航栏 -->
+    <!-- 导航栏：兼容用户/商户/管理员，不破坏原有结构 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="/">校园外卖平台</a>
@@ -18,36 +34,75 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
+                    <!-- 公共导航（所有角色都显示） -->
                     <li class="nav-item">
-                        <a class="nav-link" href="/">首页</a>
+                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">首页</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/user/merchant/list/">商家列表</a>
+                        <a class="nav-link {% if request.path == '/user/merchant/list/' %}active{% endif %}" href="/user/merchant/list/">商家列表</a>
                     </li>
-                </ul>
-                <ul class="navbar-nav">
+
+                    <!-- 商户专属导航（仅商户登录显示） -->
+                    {% if request.session.merchant_id %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/merchant/dish/list/' in request.path %}active{% endif %}" href="/merchant/dish/list/">菜品管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/merchant/order/list/' in request.path %}active{% endif %}" href="/merchant/order/list/">订单处理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/merchant/profile/' %}active{% endif %}" href="/merchant/profile/">商户中心</a>
+                    </li>
+                    {% endif %}
+
+                    <!-- 管理员专属导航（仅管理员登录显示） -->
+                    {% if request.session.admin_id %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/admin/merchant/audit/' in request.path %}active{% endif %}" href="/admin/merchant/audit/">商家审核</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/admin/data/stat/' in request.path %}active{% endif %}" href="/admin/data/stat/">数据统计</a>
+                    </li>
+                    {% endif %}
+
+                    <!-- 用户专属导航（仅用户登录显示） -->
                     {% if request.session.user_id %}
-                    <!-- 已登录显示个人中心、退出 -->
                     <li class="nav-item">
-                        <a class="nav-link" href="/user/profile/">
-                            {% bs_icon 'user-circle' %} {{ request.session.user_name }}
-                        </a>
+                        <a class="nav-link {% if '/user/order/list/' in request.path %}active{% endif %}" href="/user/order/list/">我的订单</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/user/order/list/">
-                            {% bs_icon 'shopping-cart' %} 我的订单
-                        </a>
+                        <a class="nav-link {% if request.path == '/user/profile/' %}active{% endif %}" href="/user/profile/">个人中心</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/user/logout/">退出登录</a>
+                    {% endif %}
+                </ul>
+
+                <!-- 右侧登录态：兼容所有角色 -->
+                <ul class="navbar-nav">
+                    {% if request.session.user_id or request.session.merchant_id or request.session.admin_id %}
+                    <!-- 已登录：显示名称+退出 -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-user-circle"></i>
+                            {% comment %} 优先显示对应角色名称 {% endcomment %}
+                            {% if request.session.merchant_name %}{{ request.session.merchant_name }}{% elif request.session.admin_name %}{{ request.session.admin_name }}{% elif request.session.user_name %}{{ request.session.user_name }}{% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% if request.session.user_id %}
+                            <li><a class="dropdown-item" href="/user/profile/">个人中心</a></li>
+                            {% endif %}
+                            {% if request.session.merchant_id %}
+                            <li><a class="dropdown-item" href="/merchant/profile/">商户中心</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-danger" href="javascript:logout()">退出登录</a>
+                            </li>
+                        </ul>
                     </li>
                     {% else %}
-                    <!-- 未登录显示登录、注册 -->
+                    <!-- 未登录：显示登录入口 -->
                     <li class="nav-item">
                         <a class="nav-link" href="/user/login/">用户登录</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/user/register/">用户注册</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/merchant/login/">商户登录</a>
@@ -58,21 +113,35 @@
         </div>
     </nav>
 
-    <!-- 页面主体内容 -->
+    <!-- 主体内容块：完全保留原有结构，确保所有页面能渲染 -->
     <main class="container py-4">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- 页脚 -->
+    <!-- 页脚：保留原有结构 -->
     <footer class="bg-light py-3 mt-5">
         <div class="container text-center text-muted">
             <p class="mb-0">© 2025 校园外卖平台 - 版权所有</p>
         </div>
     </footer>
 
-    <!-- 引入 Bootstrap JS 和 jQuery -->
+    <!-- 引入JS：保留原有结构 -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 退出登录通用JS -->
+    <script>
+        function logout() {
+            if (confirm('确定退出登录吗？')) {
+                {% if request.session.user_id %}
+                window.location.href = "/user/logout/";
+                {% elif request.session.merchant_id %}
+                window.location.href = "/merchant/logout/";
+                {% elif request.session.admin_id %}
+                window.location.href = "/admin/logout/";
+                {% endif %}
+            }
+        }
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

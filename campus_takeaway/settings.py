@@ -36,15 +36,19 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'campus_takeaway.urls'
 
 # 模板配置
+# settings.py 中TEMPLATES的正确配置
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'main/templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'main/templates')],  # ✅ 必须包含你的模板目录
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request',
+                'django.template.context_processors.request',  # ✅ 必须有这个（request变量依赖）
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -98,3 +102,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Session配置（有效期1天）
 SESSION_COOKIE_AGE = 3600 * 24
+
+# 媒体文件配置（用户上传的图片等）
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # 本地保存路径
+MEDIA_URL = '/media/'  # 访问URL前缀
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # 使用数据库存储session（必须）
+SESSION_COOKIE_NAME = 'sessionid'  # 默认值，无需修改
+SESSION_COOKIE_SECURE = False  # 本地开发设为False（HTTPS环境才设为True）
+SESSION_COOKIE_HTTPONLY = True  # 安全配置，无需修改
+SESSION_COOKIE_PATH = '/'  # 确保session作用于全站（关键！）
+SESSION_COOKIE_AGE = 86400  # session默认有效期1天（和API中保持一致）
+SESSION_SAVE_EVERY_REQUEST = True  # 每次请求都保存session，避免失效
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 浏览器关闭后不立即失效

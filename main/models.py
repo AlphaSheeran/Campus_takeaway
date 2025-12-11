@@ -59,10 +59,19 @@ class Dish(models.Model):
     category = models.CharField(max_length=50, verbose_name="菜品分类")
     price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="单价")
     stock = models.IntegerField(default=0, verbose_name="库存")
-    image = models.CharField(max_length=200, blank=True, null=True, verbose_name="菜品图片")
+    image = models.ImageField(upload_to='main/img/dish/', blank=True, null=True, verbose_name='菜品图片')
+    # 新增description字段：允许为空，最大长度500，用于存储菜品描述
+    description = models.CharField(max_length=500, blank=True, null=True, verbose_name="菜品描述")
     # 状态：0-下架/1-上架
     status = models.IntegerField(default=1, verbose_name="状态（0-下架/1-上架）")
     create_time = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+
+    @property
+    def image_url(self):
+        """返回图片的完整URL"""
+        if self.image:
+            return self.image.url  # 自动拼接MEDIA_URL
+        return None  # 前端会使用默认图
 
     class Meta:
         verbose_name = "菜品"

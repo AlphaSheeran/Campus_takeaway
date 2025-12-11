@@ -32,253 +32,347 @@
         </div>
 
         <!-- 无菜品提示 -->
-        <div id="noDishTip" class="text-center py-10 d-none">
-            <img src="https://via.placeholder.com/200x200?text=暂无菜品" alt="暂无菜品" class="mb-3">
-            <p class="text-muted fs-5">暂无菜品，点击「新增菜品」添加</p>
+        <div id="noDishTip" class="text-center py-5 d-none">
+            <div class="bi bi-utensils text-muted fs-1 mb-3"></div>
+            <p class="text-muted">暂无菜品，点击"新增菜品"添加</p>
         </div>
     </div>
 
-    <!-- 新增/编辑菜品模态框 -->
-    <div class="modal fade" id="addDishModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+    <!-- 编辑菜品模态框 -->
+    <div class="modal fade" id="editDishModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="modalTitle">新增菜品</h5>
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑菜品</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="dishForm" enctype="multipart/form-data">
-                        <input type="hidden" id="dishId" name="id">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="dishName" class="form-label">菜品名称</label>
-                                <input type="text" class="form-control" id="dishName" name="name" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="dishPrice" class="form-label">菜品价格（元）</label>
-                                <input type="number" step="0.01" min="0" class="form-control" id="dishPrice" name="price" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="dishCategory" class="form-label">菜品分类</label>
-                                <select class="form-select" id="dishCategory" name="category" required>
-                                    <option value="主食">主食</option>
-                                    <option value="配菜">配菜</option>
-                                    <option value="饮品">饮品</option>
-                                    <option value="小吃">小吃</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="dishStock" class="form-label">库存数量</label>
-                                <input type="number" min="0" class="form-control" id="dishStock" name="stock" required>
-                            </div>
-                            <div class="col-md-12 mb-3">
-                                <label for="dishDesc" class="form-label">菜品描述</label>
-                                <textarea class="form-control" id="dishDesc" name="description" rows="3"></textarea>
-                            </div>
-                            <div class="col-md-12 mb-3">
-                                <label for="dishImage" class="form-label">菜品图片</label>
-                                <input type="file" class="form-control" id="dishImage" name="image" accept="image/jpeg,image/png">
-                                <div class="mt-2" id="imagePreviewContainer" style="display: none;">
-                                    <img id="imagePreview" src="" alt="图片预览" style="width: 150px; height: 100px; object-fit: cover;">
-                                </div>
-                            </div>
+                    <form id="editDishForm">
+                        <input type="hidden" id="editDishId">
+                        <div class="mb-3">
+                            <label for="editDishName" class="form-label">菜品名称</label>
+                            <input type="text" class="form-control" id="editDishName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDishPrice" class="form-label">单价(元)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="editDishPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDishStock" class="form-label">库存</label>
+                            <input type="number" min="0" class="form-control" id="editDishStock" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDishDesc" class="form-label">菜品描述</label>
+                            <textarea class="form-control" id="editDishDesc" rows="3"></textarea>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="saveDishBtn">保存菜品</button>
+                    <button type="button" class="btn btn-primary" id="saveEditDish">保存修改</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 新增菜品模态框 -->
+    <div class="modal fade" id="addDishModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新增菜品</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 新增菜品表单 -->
+                    <form id="addDishForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="addDishName" class="form-label">菜品名称</label>
+                            <input type="text" class="form-control" id="addDishName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDishCategory" class="form-label">菜品分类</label>
+                            <input type="text" class="form-control" id="addDishCategory" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDishPrice" class="form-label">单价(元)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="addDishPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDishStock" class="form-label">库存</label>
+                            <input type="number" min="0" class="form-control" id="addDishStock" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDishDesc" class="form-label">菜品描述</label>
+                            <textarea class="form-control" id="addDishDesc" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDishImage" class="form-label">菜品图片</label>
+                            <input type="file" class="form-control" id="addDishImage" accept="image/*">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveAddDish">保存菜品</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // 页面加载时获取菜品列表
         $(function() {
-            // 加载菜品列表
             loadDishList();
-
-            // 图片预览
-            $('#dishImage').change(function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        $('#imagePreview').attr('src', e.target.result);
-                        $('#imagePreviewContainer').show();
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-
-            // 保存菜品（新增/编辑）
-            $('#saveDishBtn').click(function() {
-                const dishId = $('#dishId').val();
-                const formData = new FormData($('#dishForm')[0]);
-                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-
-                // 修正：添加 merchant 命名空间，匹配对应 API name
-                const url = dishId ? "{% url 'merchant:edit_dish_api' %}" : "{% url 'merchant:add_dish_api' %}";
-                
-                fetch(url, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.code === 1) {
-                        alert(dishId ? '菜品编辑成功！' : '菜品新增成功！');
-                        $('#addDishModal').modal('hide');
-                        $('#dishForm')[0].reset();
-                        $('#imagePreviewContainer').hide();
-                        loadDishList();
-                    } else {
-                        alert(data.msg);
-                    }
-                })
-                .catch(error => {
-                    console.error('操作失败：', error);
-                    alert('网络错误，请重试');
-                });
-            });
-
-            // 菜品上下架
-            $(document).on('click', '.changeStatusBtn', function() {
-                const dishId = $(this).data('id');
-                const isActive = $(this).data('active') === 1;
-                const targetStatus = isActive ? 0 : 1;
-                const statusText = isActive ? '下架' : '上架';
-
-                if (confirm(`确定要${statusText}该菜品吗？`)) {
-                    // 修正：添加 merchant 命名空间，匹配 name=change_dish_status_api
-                    fetch("{% url 'merchant:change_dish_status_api' %}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({ id: dishId, status: targetStatus })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.code === 1) {
-                            alert(`菜品${statusText}成功！`);
-                            loadDishList();
-                        } else {
-                            alert(data.msg);
-                        }
-                    });
-                }
-            });
-
-            // 编辑菜品
-            $(document).on('click', '.editDishBtn', function() {
-                const dishId = $(this).data('id');
-                fetch(`/merchant/dish/detail/api/?id=${dishId}`, {
-                    method: 'GET',
-                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.code === 1) {
-                        const dish = data.data;
-                        $('#dishId').val(dish.id);
-                        $('#dishName').val(dish.name);
-                        $('#dishPrice').val(dish.price);
-                        $('#dishCategory').val(dish.category);
-                        $('#dishStock').val(dish.stock);
-                        $('#dishDesc').val(dish.description);
-                        $('#modalTitle').text('编辑菜品');
-                        
-                        // 图片预览
-                        if (dish.image) {
-                            $('#imagePreview').attr('src', `/static/main/img/dish/${dish.image}`);
-                            $('#imagePreviewContainer').show();
-                        } else {
-                            $('#imagePreviewContainer').hide();
-                        }
-
-                        $('#addDishModal').modal('show');
-                    }
-                });
-            });
-
-            // 加载菜品列表工具函数
-            function loadDishList() {
-                fetch("{% url 'merchant:dish_detail_api' %}?id=${dishId}", {  // 改为模板标签生成URL
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  })
-                  .then(response => response.json())
-                  .then(data => {
-                    if (data.code === 1) {
-                        const dishes = data.data;
-                        if (dishes.length === 0) {
-                            $('#dishList').empty();
-                            $('#noDishTip').removeClass('d-none');
-                            return;
-                        }
-
-                        $('#noDishTip').addClass('d-none');
-                        let html = '';
-                        dishes.forEach(dish => {
-                            const statusText = dish.status === 1 ? '上架' : '下架';
-                            const statusClass = dish.status === 1 ? 'btn-warning' : 'btn-success';
-                            const statusData = dish.status === 1 ? 1 : 0;
-                            const statusTextBtn = dish.status === 1 ? '下架' : '上架';
-
-                            html += `
-                                <div class="col-md-3">
-                                    <div class="card dish-card">
-                                        <img src="/static/main/img/dish/${dish.image || 'default_dish.jpg'}" class="card-img-top dish-img" alt="${dish.name}">
-                                        <div class="card-body">
-                                            <h5 class="card-title">${dish.name}</h5>
-                                            <p class="card-text">${dish.description || '无描述'}</p>
-                                            <p class="card-text"><strong>￥${dish.price.toFixed(2)}</strong></p>
-                                            <p class="card-text">库存：${dish.stock}份</p>
-                                            <p class="card-text">分类：${dish.category}</p>
-                                        </div>
-                                        <div class="dish-footer d-flex justify-content-between">
-                                            <button class="btn btn-sm btn-primary editDishBtn" data-id="${dish.id}">编辑</button>
-                                            <button class="btn btn-sm ${statusClass} changeStatusBtn" data-id="${dish.id}" data-active="${statusData}">${statusTextBtn}</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        $('#dishList').html(html);
-                    }
-                });
-            }
-            $('#saveDishBtn').click(function() {
-                // 新增验证逻辑
-                const name = $('#dishName').val().trim();
-                const price = parseFloat($('#dishPrice').val());
-                const stock = parseInt($('#dishStock').val());
-                
-                if (!name) {
-                    alert('请输入菜品名称');
-                    return;
-                }
-                if (isNaN(price) || price <= 0) {
-                    alert('请输入有效的价格（大于0）');
-                    return;
-                }
-                if (isNaN(stock) || stock < 0) {
-                    alert('请输入有效的库存（大于等于0）');
-                    return;
-                }
-            
-                // 原有提交逻辑
-                const dishData = {
-                    // 原有数据保持不变
-                };
-                // 提交代码保持不变
-            });
-
+            // 绑定新增菜品保存按钮事件
+            $('#saveAddDish').click(saveAddDish);
         });
+
+        // 加载菜品列表（修复：添加完整错误捕获）
+        function loadDishList() {
+            fetch("{% url 'merchant:merchant_dish_list_api' %}", {
+                method: 'GET',
+                headers: { 
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                // 检查HTTP响应状态
+                if (!response.ok) {
+                    throw new Error(`请求失败：${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.code === 1) {
+                    renderDishList(data.data);
+                } else {
+                    alert('获取菜品失败：' + data.msg);
+                    $('#dishList').html('');
+                    $('#noDishTip').removeClass('d-none');
+                }
+            })
+            .catch(error => {
+                // 捕获网络/解析/HTTP错误
+                console.error('加载菜品列表失败：', error);
+                alert('加载菜品失败，请检查控制台或联系管理员！');
+                $('#dishList').html('');
+                $('#noDishTip').removeClass('d-none');
+            });
+        }
+
+        // 渲染菜品列表（补充description字段兼容）
+        function renderDishList(dishes) {
+            if (dishes.length === 0) {
+                $('#dishList').html('');
+                $('#noDishTip').removeClass('d-none');
+                return;
+            }
+
+            $('#noDishTip').addClass('d-none');
+            let html = '';
+            dishes.forEach(dish => {
+                html += `
+                <div class="col-md-4 dish-card">
+                    <img src="${dish.image_url || '/static/img/default-dish.jpg'}" class="dish-img w-100" alt="${dish.name}">
+                    <div class="p-3">
+                        <h5>${dish.name || '未命名菜品'}</h5>
+                        <p class="text-muted small">${dish.description || '无描述'}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-primary fw-bold">¥${(dish.price || 0).toFixed(2)}</span>
+                            <span class="badge ${dish.stock > 0 ? 'bg-success' : 'bg-danger'}">
+                                ${dish.stock > 0 ? '有库存' : '已售罄'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="dish-footer d-flex justify-content-between">
+                        <button class="btn btn-sm btn-outline-primary edit-dish" data-id="${dish.id}">编辑</button>
+                        <button class="btn btn-sm btn-outline-danger ms-2 delete-dish" data-id="${dish.id}">删除</button>
+                        <button class="btn btn-sm btn-outline-${dish.status ? 'danger' : 'success'}" 
+                                onclick="changeDishStatus(${dish.id}, ${dish.status ? 0 : 1})">
+                            ${dish.status ? '下架' : '上架'}
+                        </button>
+                    </div>
+                </div>
+                `;
+            });
+            $('#dishList').html(html);
+
+            // 绑定编辑按钮事件
+            $('.edit-dish').click(function() {
+                const dishId = $(this).data('id');
+                loadDishDetail(dishId);
+            });
+            $('.delete-dish').click(function() {
+                const dishId = $(this).data('id');
+                deleteDish(dishId);
+            });
+        }
+        
+
+       // 加载菜品详情（修复：显示后端具体错误信息）
+        function loadDishDetail(dishId) {
+            fetch("{% url 'merchant:dish_detail_api' %}?id=" + dishId, {
+                method: 'GET',
+                headers: { 
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP错误：${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.code === 1) {
+                    const dish = data.data;
+                    $('#editDishId').val(dish.id || '');
+                    $('#editDishName').val(dish.name || '');
+                    $('#editDishPrice').val(dish.price || 0);
+                    $('#editDishStock').val(dish.stock || 0);
+                    $('#editDishDesc').val(dish.description || '');
+                    $('#editDishModal').modal('show');
+                } else {
+                    // 显示后端返回的具体错误信息
+                    alert('加载菜品详情失败：' + data.msg);
+                }
+            })
+            .catch(error => {
+                console.error('加载菜品详情失败：', error);
+                // 区分网络错误和业务错误
+                alert(`加载菜品详情失败：${error.message || '网络异常，请重试'}`);
+            });
+        }
+
+        // 保存新增菜品（修复：添加表单验证）
+        function saveAddDish() {
+            // 表单必填项验证
+            const name = $('#addDishName').val().trim();
+            const category = $('#addDishCategory').val().trim();
+            const price = $('#addDishPrice').val().trim();
+            const stock = $('#addDishStock').val().trim();
+            
+            if (!name) {
+                alert('菜品名称不能为空！');
+                return;
+            }
+            if (!category) {
+                alert('菜品分类不能为空！');
+                return;
+            }
+            if (!price || isNaN(price) || parseFloat(price) <= 0) {
+                alert('请输入有效的单价（大于0的数字）！');
+                return;
+            }
+            if (!stock || isNaN(stock) || parseInt(stock) < 0) {
+                alert('请输入有效的库存（非负整数）！');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('category', category);
+            formData.append('price', price);
+            formData.append('stock', stock);
+            formData.append('description', $('#addDishDesc').val().trim());
+            formData.append('image', $('#addDishImage')[0].files[0]);
+
+            fetch("{% url 'merchant:add_dish_api' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('新增菜品请求失败');
+                return response.json();
+            })
+            .then(data => {
+                if (data.code === 1) {
+                    $('#addDishModal').modal('hide');
+                    $('#addDishForm')[0].reset(); // 重置表单
+                    loadDishList(); // 重新加载列表
+                    alert('新增菜品成功！');
+                } else {
+                    alert('新增失败：' + data.msg);
+                }
+            })
+            .catch(error => {
+                console.error('新增菜品失败：', error);
+                alert('新增菜品失败，请检查控制台！');
+            });
+        }
+
+        // 更改菜品状态（上架/下架）
+        function changeDishStatus(dishId, status) {
+            if (!dishId) {
+                alert('菜品ID不能为空！');
+                return;
+            }
+
+            fetch("{% url 'merchant:change_dish_status_api' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ id: dishId, status: status })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('修改状态失败');
+                return response.json();
+            })
+            .then(data => {
+                if (data.code === 1) {
+                    loadDishList(); // 重新加载列表
+                    alert(status === 1 ? '菜品已上架' : '菜品已下架');
+                } else {
+                    alert('修改状态失败：' + data.msg);
+                }
+            })
+            .catch(error => {
+                console.error('修改菜品状态失败：', error);
+                alert('修改状态失败，请检查控制台！');
+            });
+        }
+        function deleteDish(dishId) {
+            // 1. 确认删除（防止误操作）
+            if (!confirm('确定要删除该菜品吗？删除后无法恢复！')) {
+                return;
+            }
+        
+            // 2. 调用删除API
+            fetch("{% url 'merchant:delete_dish_api' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ id: dishId })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`请求失败：${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                if (data.code === 1) {
+                    alert('菜品删除成功！');
+                    loadDishList(); // 刷新菜品列表
+                } else {
+                    alert('删除失败：' + data.msg);
+                }
+            })
+            .catch(error => {
+                console.error('删除菜品失败：', error);
+                alert('删除菜品失败，请检查控制台或联系管理员！');
+            });
+        }
     </script>
 </body>
 </html>
