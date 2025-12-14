@@ -15,8 +15,9 @@ from .models import User, Merchant, Dish, Order, OrderItem, Address, Admin
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from .models import Merchant, Order
 from .decorators import merchant_login_required 
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 
 # ---------------------- 公共工具函数 ----------------------
 def generate_order_no():
@@ -257,8 +258,56 @@ def user_recent_orders_api(request):
             }.get(order.status, '未知状态'),
             'item_count': item_count  # 商品件数
         })
-    
+        data = [{
+        'order_no': order.order_no,
+        'merchant_name': order.merchant.name,
+        'create_time': order.create_time.strftime('%Y-%m-%d %H:%M'),
+        'total_price': order.total_price,
+        'status': order.status,
+        'status_text': ['待支付', '已支付', '已接单', '已完成', '已取消'][order.status],  # 新增
+    } for order in orders]
     return JsonResponse({'code': 1, 'data': order_list})
+
+# 取消订单API（基于session验证用户，适配你的项目）
+@csrf_exempt
+def cancel_order_api(request):
+    """
+    取消订单API
+    请求方式：POST
+    请求参数：{"order_no": "订单号"}
+    返回：{"code": 0/1, "msg": "提示信息"}
+    """
+    # 1. 验证用户是否登录（基于session）
+    if not request.session.get('user_id'):
+        return JsonResponse({'code': 0, 'msg': '请先登录'})
+    
+    # 2. 获取请求参数
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            order_no = data.get('order_no')
+            if not order_no:
+                return JsonResponse({'code': 0, 'msg': '订单号不能为空'})
+            
+            # 3. 查询订单并验证归属
+            order = Order.objects.filter(order_no=order_no, user_id=request.session['user_id']).first()
+            if not order:
+                return JsonResponse({'code': 0, 'msg': '订单不存在'})
+            
+            # 4. 验证订单状态（仅待支付/已支付可取消）
+            if order.status not in [0, 1]:
+                return JsonResponse({'code': 0, 'msg': '仅待支付/已支付未接单的订单可取消'})
+            
+            # 5. 修改订单状态为「已取消」
+            order.status = 4
+            order.save()
+            
+            return JsonResponse({'code': 1, 'msg': '订单取消成功'})
+        except Exception as e:
+            return JsonResponse({'code': 0, 'msg': f'取消失败：{str(e)}'})
+    else:
+        return JsonResponse({'code': 0, 'msg': '仅支持POST请求'})
+
 
 def merchant_list(request):
     """商家列表页面"""

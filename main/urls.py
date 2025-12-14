@@ -17,6 +17,7 @@ user_urlpatterns = [
     path('order/list/', views.user_order_list, name='user_order_list'),  # /user/order/list/
     path('order/detail/', views.user_order_detail, name='user_order_detail'),  # 订单详情
     path('order/recent/api/', views.user_recent_orders_api, name='user_recent_orders_api'),  # 最近订单API
+    path('order/cancel/api/', views.cancel_order_api, name='cancel_order_api'),
     path('pay/', views.user_pay, name='user_pay'),  # /user/pay/
     path('profile/', views.user_profile, name='user_profile'),  # /user/profile/
 

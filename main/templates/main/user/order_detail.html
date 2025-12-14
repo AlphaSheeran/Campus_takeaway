@@ -121,13 +121,39 @@
         </div>
     </div>
 
-    <!-- 操作按钮（仅待支付显示支付按钮） -->
+    <!-- 操作按钮（仅待支付显示支付按钮 + 新增取消订单按钮） -->
     <div class="text-center">
         {% if order.status == 0 %}
-        <a href="{% url 'user:user_pay' %}?order_no={{ order.order_no }}" class="btn btn-success">
+        <a href="{% url 'user:user_pay' %}?order_no={{ order.order_no }}" class="btn btn-success me-3">
             <i class="bi bi-credit-card"></i> 去支付
         </a>
+        <button id="cancelOrderBtn" class="btn btn-danger" data-order-no="{{ order.order_no }}">
+            <i class="bi bi-x-circle"></i> 取消订单
+        </button>
+        {% elif order.status == 1 %}
+        <!-- 已支付未接单时显示取消按钮 -->
+        <button id="cancelOrderBtn" class="btn btn-danger" data-order-no="{{ order.order_no }}">
+            <i class="bi bi-x-circle"></i> 取消订单
+        </button>
         {% endif %}
+    </div>
+</div>
+
+<!-- 新增：提示模态框 -->
+<div class="modal fade" id="tipsModal" tabindex="-1" aria-labelledby="tipsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tipsModalLabel">操作提示</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center" id="tipsMsg">
+                操作提示内容
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -138,7 +164,45 @@
 document.addEventListener('DOMContentLoaded', function() {
     // 无需额外操作，仅为兼容
 });
-</script>
 
+// 新增：取消订单逻辑
+$(function() {
+    $('#cancelOrderBtn').click(function() {
+        const orderNo = $(this).data('order-no');
+        // 确认取消
+        if (!confirm('确定要取消该订单吗？取消后将无法恢复！')) {
+            return;
+        }
+
+        // 调用取消订单API
+        fetch("{% url 'user:cancel_order_api' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({order_no: orderNo})
+        })
+        .then(response => response.json())
+        .then(data => {
+            // 显示提示信息
+            $('#tipsMsg').text(data.msg);
+            $('#tipsModal').modal('show');
+
+            // 取消成功则刷新页面
+            if (data.code === 1) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            }
+        })
+        .catch(error => {
+            console.error('取消订单失败：', error);
+            $('#tipsMsg').text('网络错误，请稍后重试');
+            $('#tipsModal').modal('show');
+        });
+    });
+});
+</script>
 
 {% endblock %}

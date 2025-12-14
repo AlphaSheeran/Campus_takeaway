@@ -146,7 +146,7 @@
                 });
             }
 
-            // 加载最近订单（修正：API路径改为命名空间URL）
+            // 加载最近订单（修正：API路径改为命名空间URL + 新增取消订单按钮）
             function loadRecentOrders() {
                 fetch("{% url 'user:user_recent_orders_api' %}", {
                     method: 'GET',
@@ -171,6 +171,17 @@
                         orders.slice(0, 3).forEach(order => { // 最多显示3个
                             const statusText = ['待支付', '已支付', '已接单', '已完成', '已取消'][order.status];
                             const statusClass = ['text-warning', 'text-primary', 'text-info', 'text-success', 'text-danger'][order.status];
+                            
+                            // 新增：判断是否显示取消按钮
+                            let cancelBtn = '';
+                            if (order.status === 0 || order.status === 1) {
+                                cancelBtn = `
+                                    <button class="btn btn-sm btn-danger cancelOrderBtn ms-2" data-order-no="${order.order_no}">
+                                        取消订单
+                                    </button>
+                                `;
+                            }
+                            
                             html += `
                                 <div class="list-group-item">
                                     <div class="d-flex justify-content-between align-items-center">
@@ -184,11 +195,41 @@
                                     <a href="{% url 'user:user_order_detail' %}?order_no=${order.order_no}" class="btn btn-sm btn-outline-primary mt-2">
                                         查看详情
                                     </a>
+                                    ${cancelBtn} <!-- 插入取消订单按钮 -->
                                 </div>
                             `;
                         });
                         html += '</div>';
                         $('#recentOrdersContainer').html(html);
+                        
+                        // 新增：绑定首页取消订单按钮事件
+                        $('.cancelOrderBtn').click(function() {
+                            const orderNo = $(this).data('order-no');
+                            if (!confirm('确定要取消该订单吗？取消后将无法恢复！')) {
+                                return;
+                            }
+
+                            fetch("{% url 'user:cancel_order_api' %}", {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': '{{ csrf_token }}'
+                                },
+                                body: JSON.stringify({order_no: orderNo})
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                alert(data.msg);
+                                // 取消成功重新加载最近订单
+                                if (data.code === 1) {
+                                    loadRecentOrders();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('取消订单失败：', error);
+                                alert('网络错误，请稍后重试');
+                            });
+                        });
                     } else {
                         $('#recentOrdersContainer').html(`
                             <div class="card-body text-center text-danger">${data.msg}</div>
