@@ -1,0 +1,190 @@
+{% extends 'main/base.html' %}
+{% block title %}订单支付 - 校园外卖{% endblock %}
+{% block content %}
+<div class="container mt-4 mb-5">
+    <!-- 头部返回 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="/user/order/detail/?order_no={{ order_no }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> 返回订单详情
+        </a>
+        <h2>{{ pay_type_text }}支付</h2>
+        <div></div>
+    </div>
+
+    <!-- 订单信息卡片 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light fw-bold">
+            订单信息
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <span class="text-muted">订单号：</span>
+                    <span class="fw-bold">{{ order_no }}</span>
+                </div>
+                <div class="col-md-6">
+                    <span class="text-muted">商家名称：</span>
+                    <span>{{ merchant_name }}</span>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <span class="text-muted">配送方式：</span>
+                    <span>{{ delivery_type_text }}</span>
+                </div>
+                <div class="col-md-6">
+                    <span class="text-muted">配送信息：</span>
+                    <span>{{ delivery_info }}</span>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <span class="text-muted">商家接单联系人：</span>
+                    <span>{{ merchant_contact_name }}</span>
+                </div>
+                <div class="col-md-6">
+                    <span class="text-muted">商家接单电话：</span>
+                    <span>{{ merchant_contact_phone }}</span>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <span class="text-muted">订单金额：</span>
+                    <span class="fw-bold text-danger fs-4">¥{{ total_price|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 菜品明细 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light fw-bold">
+            菜品明细
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-borderless mb-0">
+                    <thead>
+                        <tr class="border-bottom">
+                            <th>菜品名称</th>
+                            <th class="text-center">单价</th>
+                            <th class="text-center">数量</th>
+                            <th class="text-end">小计</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order_items %}
+                        <tr>
+                            <td>{{ item.dish.name }}</td>
+                            <td class="text-center">¥{{ item.price|floatformat:2 }}</td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-end">¥{{ item.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white text-end">
+            <span class="fw-bold">总计：¥{{ total_price|floatformat:2 }}</span>
+        </div>
+    </div>
+
+    <!-- 支付方式选择 + 微信支付二维码 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light fw-bold text-center">
+            确认支付
+        </div>
+        <div class="card-body text-center">
+            <!-- 仅微信支付显示二维码 -->
+            {% if pay_type == 1 %}
+            <div class="mb-4">
+                <h5 class="text-success mb-3">微信扫码支付</h5>
+                <!-- 模拟二维码（真实场景替换为wx_pay_qrcode） -->
+                <img src="https://picsum.photos/200/200" alt="微信支付二维码" class="img-thumbnail mb-2">
+                <p class="text-muted">请使用微信扫码完成支付</p>
+                <p class="text-danger small">支付金额：¥{{ total_price|floatformat:2 }}</p>
+            </div>
+            {% endif %}
+
+            <!-- 模拟支付按钮（对接后端POST接口） -->
+            <button id="simulatePayBtn" class="btn btn-success mt-3" data-order-no="{{ order_no }}">
+                <i class="bi bi-check-circle"></i> 模拟{{ pay_type_text }}支付成功
+            </button>
+            
+            <!-- 支付状态提示 -->
+            <div id="payStatus" class="mt-3 d-none">
+                <span id="payMsg" class="fw-bold"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 支付成功模态框 -->
+<div class="modal fade" id="paySuccessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">支付成功</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p>订单{{ order_no }}支付成功！</p>
+                <p>商家将尽快处理你的订单</p>
+            </div>
+            <div class="modal-footer">
+                <a href="/user/order/detail/?order_no={{ order_no }}" class="btn btn-primary">查看订单详情</a>
+                <a href="/user/" class="btn btn-outline-primary">返回首页</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入JS -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+$(function() {
+    // 模拟支付按钮点击事件
+    $('#simulatePayBtn').click(function() {
+        const orderNo = $(this).data('order-no');
+        $(this).prop('disabled', true).text('支付中...');
+        
+        // 调用后端POST接口（对接user_pay的POST逻辑）
+        fetch("/user/pay/", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'  // @ensure_csrf_cookie确保CSRF token存在
+            },
+            body: JSON.stringify({order_no: orderNo})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.code === 1) {
+                // 支付成功
+                $('#payStatus').removeClass('d-none');
+                $('#payMsg').text(data.msg).addClass('text-success');
+                // 显示成功模态框
+                $('#paySuccessModal').modal('show');
+                // 模态框关闭后跳转（可选）
+                $('#paySuccessModal').on('hidden.bs.modal', function() {
+                    window.location.href = `/user/order/detail/?order_no=${orderNo}`;
+                });
+            } else {
+                // 支付失败
+                $('#payStatus').removeClass('d-none');
+                $('#payMsg').text(data.msg).addClass('text-danger');
+                $(this).prop('disabled', false).text(`模拟{{ pay_type_text }}支付成功`);
+            }
+        })
+        .catch(error => {
+            console.error('支付请求失败：', error);
+            $('#payStatus').removeClass('d-none');
+            $('#payMsg').text('网络错误，请重试').addClass('text-danger');
+            $(this).prop('disabled', false).text(`模拟{{ pay_type_text }}支付成功`);
+        });
+    });
+});
+</script>
+{% endblock %}

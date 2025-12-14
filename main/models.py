@@ -43,6 +43,9 @@ class Merchant(models.Model):
     status = models.IntegerField(default=0, verbose_name="状态（0-待审核/1-已通过/2-已拒绝）")
     create_time = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
 
+    contact_name = models.CharField(max_length=50, blank=True, null=True, verbose_name="接单联系人")
+    contact_phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="接单联系电话")
+
     def save(self, *args, **kwargs):
         if not self.password.startswith('pbkdf2_sha256$'):
             self.password = make_password(self.password)
@@ -114,6 +117,7 @@ class OrderItem(models.Model):
     dish = models.ForeignKey(Dish, on_delete=models.CASCADE, verbose_name="菜品")
     quantity = models.IntegerField(verbose_name="数量")
     price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="下单时单价")  # 记录下单时价格
+    subtotal = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name="小计")
 
     class Meta:
         verbose_name = "订单项"
@@ -133,3 +137,4 @@ class Admin(models.Model):
     class Meta:
         verbose_name = "管理员"
         verbose_name_plural = "管理员"
+

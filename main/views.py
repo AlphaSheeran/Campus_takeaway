@@ -2,7 +2,7 @@ import json
 import uuid
 import os
 from datetime import datetime, timedelta
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, HttpResponseRedirect, reverse
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.hashers import check_password, make_password
@@ -18,7 +18,8 @@ from django.contrib import messages
 from .decorators import merchant_login_required 
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-
+from django.utils import timezone
+from .decorators import user_login_required
 # ---------------------- 公共工具函数 ----------------------
 def generate_order_no():
     """生成唯一订单号（UUID前8位+时间戳）"""
@@ -635,47 +636,75 @@ def user_order_list_api(request):
 @user_login_required
 @ensure_csrf_cookie
 def user_pay(request):
-    """用户支付功能"""
+    """用户支付功能（完善微信支付+订单项展示）"""
     user_id = request.session.get('user_id')
 
-    # GET请求：返回支付页面
+    # GET请求：返回支付页面（补充订单项、微信支付参数、商家联系信息）
     if request.method == 'GET':
         order_no = request.GET.get('order_no')
         order_id = request.GET.get('order_id')
-        if not (order_no or order_id):
-            return HttpResponse('缺少订单号参数')
         
-        # 查询订单信息
+        # 1. 参数验证（优化：返回重定向而非纯文本，更友好）
+        if not (order_no or order_id):
+            return render(request, 'main/error.html', {'msg': '缺少订单号参数', 'redirect_url': '/user/order_list/'})
+        
+        # 2. 查询订单（加try-except捕获异常）
         try:
             if order_no:
                 order = Order.objects.get(order_no=order_no, user_id=user_id)
             else:
                 order = Order.objects.get(id=order_id, user_id=user_id)
         except Order.DoesNotExist:
-            return HttpResponse('订单不存在或不属于当前用户')
+            return render(request, 'main/error.html', {'msg': '订单不存在或不属于当前用户', 'redirect_url': '/user/order_list/'})
         
-        # 订单状态验证
+        # 3. 订单状态验证（优化：返回页面提示而非纯文本）
         if order.status != 0:
             status_text = {0: '待支付', 1: '已支付', 2: '已接单', 3: '已完成', 4: '已取消'}.get(order.status, '未知状态')
-            return HttpResponse(f'订单状态异常（当前状态：{status_text}）')
+            return render(request, 'main/error.html', {
+                'msg': f'订单状态异常（当前状态：{status_text}）',
+                'redirect_url': f'/user/order_detail/?order_no={order.order_no}'
+            })
         
-        # 传递订单信息到支付页面
+        # 4. 查询订单项（用于支付页面展示菜品明细）
+        order_items = OrderItem.objects.filter(order=order)
+        # 计算订单项小计（兼容新旧数据）
+        for item in order_items:
+            if not item.subtotal:  # 如果subtotal为空（旧数据），实时计算
+                item.subtotal = item.quantity * item.price
+        
+        # 5. 构造微信支付参数（模拟，真实场景对接微信SDK）
+        # 微信支付金额单位为分，需转换
+        total_fee = int(order.total_price * 100)
+        # 模拟微信支付二维码链接（真实场景替换为微信统一下单接口返回的code_url）
+        wx_pay_qrcode = f'weixin://wxpay/bizpayurl?pr=XXX{order.order_no}'
+        
+        # 6. 构造上下文（补充订单项、微信支付参数、商家联系信息）
         context = {
+            'order': order,  # 传递完整订单对象（方便前端调用更多字段）
             'order_no': order.order_no,
             'total_price': float(order.total_price),
+            'total_fee': total_fee,  # 微信支付金额（分）
             'merchant_name': order.merchant.name,
-            'pay_type': '校园卡' if order.pay_type == 0 else '微信'
+            # 新增：商家接单联系信息
+            'merchant_contact_name': order.merchant.contact_name or '未填写',
+            'merchant_contact_phone': order.merchant.contact_phone or '未填写',
+            'pay_type': order.pay_type,  # 传递数字类型（0-校园卡/1-微信）
+            'pay_type_text': '校园卡' if order.pay_type == 0 else '微信',
+            'order_items': order_items,  # 订单项列表
+            'wx_pay_qrcode': wx_pay_qrcode,  # 微信支付二维码链接
+            'delivery_type_text': '堂食' if order.delivery_type == 0 else '外卖',
+            'delivery_info': order.delivery_info
         }
         return render(request, 'main/user/pay.html', context)
 
-    # POST请求：处理支付提交
+    # POST请求：处理支付提交（保留核心逻辑，优化异常处理）
     elif request.method == 'POST':
-        data = json.loads(request.body)
-        order_no = data.get('order_no')
-        if not order_no:
-            return JsonResponse({'code': 0, 'msg': '订单号不能为空'})
-        
         try:
+            data = json.loads(request.body)
+            order_no = data.get('order_no')
+            if not order_no:
+                return JsonResponse({'code': 0, 'msg': '订单号不能为空'})
+            
             with transaction.atomic():
                 # 1. 查询订单（加行锁，防止并发支付）
                 order = Order.objects.select_for_update().get(order_no=order_no, user_id=user_id)
@@ -686,19 +715,25 @@ def user_pay(request):
                 
                 # 3. 更新订单状态（0-待支付 → 1-已支付）
                 order.status = 1
-                order.pay_time = datetime.now()
+                order.pay_time = timezone.now()  # 替换datetime.now()为Django推荐的timezone
+                # 确保支付方式为微信（如果前端选择微信支付，可动态接收pay_type）
+                # 如需支持校园卡支付，可从前端接收pay_type参数：order.pay_type = data.get('pay_type', 1)
+                order.pay_type = 1  # 固定为微信支付（可根据需求调整）
                 order.save()
         
             return JsonResponse({
                 'code': 1,
                 'msg': '支付成功',
-                'redirect_url': '/user/order_list/'
+                'redirect_url': f'/user/order_detail/?order_no={order_no}'
             })
         except Order.DoesNotExist:
             return JsonResponse({'code': 0, 'msg': '订单不存在'})
+        except json.JSONDecodeError:
+            return JsonResponse({'code': 0, 'msg': '请求参数格式错误'})
         except Exception as e:
             return JsonResponse({'code': 0, 'msg': f'支付失败：{str(e)}'})
 
+    # 非GET/POST请求
     return JsonResponse({'code': 0, 'msg': '请求方式错误'})
 
 
