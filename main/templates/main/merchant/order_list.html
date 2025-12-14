@@ -1,5 +1,11 @@
 {% extends 'main/base.html' %}
 {% block title %}商户订单管理 - 校园外卖{% endblock %}
+
+<!-- 1. 替换导航栏为你的nav.html -->
+{% block header %}
+    {% include 'common/nav.html' %}  <!-- 确保nav.html路径正确，如实际是main/common/nav.html则改为main/common/nav.html -->
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -103,7 +109,7 @@
                         总计：¥{{ order.order.total_price|floatformat:2 }}
                     </div>
                     <div class="mt-2">
-                        <!-- 订单状态操作按钮 -->
+                        <!-- 订单状态操作按钮（修复事件绑定） -->
                         {% if order.order.status == 1 %}
                         <!-- 已支付 → 接单 -->
                         <button class="btn btn-sm btn-primary handleOrderBtn" 
@@ -119,12 +125,12 @@
                             标记完成
                         </button>
                         {% elif order.order.status == 1 or order.order.status == 2 %}
-                            <!-- 已支付/已接单 → 取消 -->
-                            <button class="btn btn-sm btn-danger handleOrderBtn" 
-                                    data-order-id="{{ order.order.id }}" 
-                                    data-target-status="4">
-                                取消订单
-                            </button>
+                        <!-- 已支付/已接单 → 取消 -->
+                        <button class="btn btn-sm btn-danger handleOrderBtn" 
+                                data-order-id="{{ order.order.id }}" 
+                                data-target-status="4">
+                            取消订单
+                        </button>
                         {% endif %}
                     </div>
                 </div>
@@ -134,52 +140,74 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
 
-<!-- 订单状态操作JS -->
+<!-- 2. 修复按钮JS（利用nav中已有的jQuery，避免重复引入） -->
+{% block extra_js %}
 <script>
-$(function() {
-    // 绑定订单操作按钮（接单/完成/取消）
-    $('.handleOrderBtn').click(function() {
+// 确保DOM加载完成 + 避免jQuery冲突
+$(document).ready(function() {
+    // 绑定按钮点击事件（修复核心：用on委托，兼容动态渲染）
+    $(document).on('click', '.handleOrderBtn', function() {
         const orderId = $(this).data('order-id');
         const targetStatus = $(this).data('target-status');
         let actionText = '';
-        
+
         // 判断操作类型
         if (targetStatus === 2) actionText = '接单';
         else if (targetStatus === 3) actionText = '标记为完成';
         else if (targetStatus === 4) actionText = '取消';
-        else return;
+        else {
+            alert('无效的操作类型！');
+            return;
+        }
 
         // 确认操作
         if (!confirm(`确定要${actionText}该订单吗？`)) {
             return;
         }
 
-        // 调用商户订单更新API
-        fetch("{% url 'merchant:merchant_order_update_api' %}", {
-            method: 'POST',
+        // 调用API（简化版，利用nav中已有的jQuery）
+        $.ajax({
+            url: '/merchant/order/update/api/',
+            type: 'POST',
+            dataType: 'json',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
+                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() || getCookie('csrftoken')
             },
-            body: JSON.stringify({
-                order_id: orderId,
-                status: targetStatus
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.msg);
-            // 操作成功刷新页面
-            if (data.code === 1) {
-                window.location.reload();
+            data: JSON.stringify({
+                order_id: parseInt(orderId),
+                status: parseInt(targetStatus)
+            }),
+            contentType: 'application/json',
+            success: function(data) {
+                alert(data.msg);
+                if (data.code === 1) {
+                    window.location.reload();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('操作失败：', error);
+                alert(`操作失败：${xhr.responseJSON?.msg || '网络错误'}`);
             }
-        })
-        .catch(error => {
-            console.error('订单操作失败：', error);
-            alert('网络错误，请稍后重试');
         });
     });
+
+    // 兼容CSRF Token获取（备用）
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 });
 </script>
 {% endblock %}
