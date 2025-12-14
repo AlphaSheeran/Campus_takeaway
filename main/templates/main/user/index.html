@@ -108,8 +108,6 @@
             loadRecentOrders();
             {% endif %}
 
-            // ---------------------- 工具函数 ----------------------
-            // 加载热门商家（修正：添加user命名空间前缀）
             function loadHotMerchants() {
                 fetch("{% url 'user:merchant_list_api' %}?hot=1", {
                     method: 'GET',
@@ -120,19 +118,20 @@
                     if (data.code === 1) {
                         const merchants = data.data.filter(m => m.score >= 4.5);
                         let html = '';
-                        merchants.slice(0, 6).forEach(merchant => { // 最多显示6个
+                        merchants.slice(0, 6).forEach(merchant => {
+                            // ✅ 直接使用后端返回的完整路径，不拼接任何前缀
+                            const logoUrl = merchant.logo || '/static/main/img/merchant/default_merchant.jpg';
                             html += `
                                 <div class="col-md-4 hot-merchant">
                                     <div class="card merchant-card h-100">
-                                        <img src="/static/main/img/merchant/${merchant.logo || 'default_merchant.jpg'}" 
+                                        <img src="${logoUrl}" 
                                              class="card-img-top" alt="${merchant.name}" 
                                              style="height: 150px; object-fit: cover;">
                                         <div class="card-body">
                                             <h5 class="card-title">${merchant.name}</h5>
                                             <p class="card-text">分类：${merchant.category}</p>
                                             <p class="card-text">评分：${merchant.score} ★</p>
-                                            <!-- 修正：绝对路径改为命名空间URL -->
-                                            <a href="{% url 'user:merchant_list' %}?merchant_id=${merchant.id}" class="btn btn-primary w-100">
+                                            <a href="{% url 'user:merchant_list' %}?merchant_id=` + merchant.id + `" class="btn btn-primary w-100">
                                                 立即点餐
                                             </a>
                                         </div>

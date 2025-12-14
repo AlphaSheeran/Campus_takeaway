@@ -42,9 +42,9 @@
             <div class="col-md-4">
                 <div class="profile-card text-center">
                     <h5 class="card-title mb-3">店铺信息</h5>
-                    <!-- 店铺Logo预览 -->
+                    <!-- 店铺Logo预览：修复核心行（用Django default过滤器替换||） -->
                     <img id="logoPreview" class="logo-preview" 
-                         src="/static/main/img/merchant/{{ merchant.logo || 'default_merchant.jpg' }}" 
+                         src="/media/main/img/merchant/{{ merchant.logo|default:'default_merchant.jpg' }}" 
                          alt="店铺Logo">
                     <form id="logoForm" enctype="multipart/form-data">
                         <div class="mb-3">
@@ -115,6 +115,8 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(function() {
             // 页面初始化：加载商户信息和统计数据
@@ -127,17 +129,32 @@
                 const formData = new FormData(this);
                 formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
+                // 替换原有Logo上传的fetch部分
                 fetch("/merchant/profile/update/logo/api/", {
                     method: 'POST',
                     body: formData
                 })
-                .then(response => response.json())
+                .then(response => {
+                    // 先检查响应状态码（关键：补充404/500的处理）
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            throw new Error('接口不存在，请检查后端路由配置');
+                        } else if (response.status === 403) {
+                            throw new Error('登录状态失效，请重新登录');
+                        } else if (response.status === 500) {
+                            throw new Error('服务器内部错误，请查看后端日志');
+                        } else {
+                            throw new Error(`请求失败：${response.status}`);
+                        }
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.code === 1) {
                         $('#logoMsg').removeClass('d-none text-danger').addClass('text-success');
                         $('#logoMsg').text('Logo上传成功！');
                         // 刷新Logo预览
-                        $('#logoPreview').attr('src', `/static/main/img/merchant/${data.logo_name}?t=${new Date().getTime()}`);
+                        $('#logoPreview').attr('src', `/media/main/img/merchant/${data.logo_name || 'default_merchant.jpg'}?t=${new Date().getTime()}`);
                         setTimeout(() => $('#logoMsg').addClass('d-none'), 2000);
                     } else {
                         $('#logoMsg').removeClass('d-none text-success').addClass('text-danger');
@@ -147,7 +164,8 @@
                 .catch(error => {
                     console.error('Logo上传失败：', error);
                     $('#logoMsg').removeClass('d-none text-success').addClass('text-danger');
-                    $('#logoMsg').text('网络错误，请重试');
+                    // 显示具体错误信息（而非笼统的“网络错误”）
+                    $('#logoMsg').text(`上传失败：${error.message}`);
                 });
             });
 
@@ -174,8 +192,9 @@
                     if (data.code === 1) {
                         $('#profileMsg').removeClass('d-none text-danger').addClass('text-success');
                         $('#profileMsg').text('保存成功！');
-                        // 更新session中的商户名称
-                        request.session.merchant_name = formData.name;
+                        // 更新session中的商户名称（注意：前端无法直接修改Django session，这里需要后端配合）
+                        // 错误修正：request.session是后端变量，前端JS无法访问，注释掉这行
+                        // request.session.merchant_name = formData.name;
                         setTimeout(() => $('#profileMsg').addClass('d-none'), 2000);
                     } else {
                         $('#profileMsg').removeClass('d-none text-success').addClass('text-danger');
@@ -198,8 +217,8 @@
                         $('#username').val(merchant.username);
                         $('#name').val(merchant.name);
                         $('#category').val(merchant.category);
-                        // 加载Logo
-                        $('#logoPreview').attr('src', `/static/main/img/merchant/${merchant.logo || 'default_merchant.jpg'}`);
+                        // 加载Logo：JS里的||是合法的
+                        $('#logoPreview').attr('src', `/media/main/img/merchant/${merchant.logo || 'default_merchant.jpg'}`);
                         // 存储商户信息到页面
                         window.merchantInfo = merchant;
                     }

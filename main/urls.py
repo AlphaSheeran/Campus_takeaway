@@ -31,7 +31,6 @@ merchant_urlpatterns = [
     path('logout/', views.merchant_logout, name='merchant_logout'),
     path('dish/list/', views.dish_list, name='dish_list'),
     path('dish/list/api/', views.merchant_dish_list_api, name='merchant_dish_list_api'),
-    # 添加菜品详情API路由（用于编辑菜品时获取数据）
     path('dish/detail/api/', views.dish_detail_api, name='dish_detail_api'),
     path('add/dish/api/', views.add_dish_api, name='add_dish_api'),
     path('edit/dish/api/', views.edit_dish_api, name='edit_dish_api'),
@@ -40,6 +39,7 @@ merchant_urlpatterns = [
     path('order/list/', views.merchant_order_list, name='merchant_order_list'),
     path('order/update/api/', views.merchant_order_update_api, name='merchant_order_update_api'),
     path('profile/', views.merchant_profile, name='merchant_profile'),  # 商户中心
+    path('profile/update/logo/api/', views.merchant_logo_update_api, name='merchant_logo_update'),
 ]
 
 # ---------------------- 3. 根路径 + 各端路由入口（注册命名空间） ----------------------

@@ -233,7 +233,7 @@
                         $('#checkoutMsg').removeClass('d-none text-danger').addClass('text-success');
                         $('#checkoutMsg').text(`订单创建成功，订单号：${data.order_no}，跳转支付...`);
                         setTimeout(() => {
-                            window.location.href = "{% url 'user:user_pay' %}?order_no=${data.order_no}";
+                            window.location.href = "{% url 'user:user_pay' %}?order_no=" + data.order_no; // 修正模板字符串语法错误
                             // 清空购物车
                             cartData = [];
                             $('#cartBody').empty();
@@ -252,7 +252,7 @@
             });
 
             // ---------------------- 工具函数 ----------------------
-            // 加载商家列表（修正命名空间前缀）
+            // 加载商家列表（修正命名空间前缀 + Logo路径核心修复）
             function loadMerchants(keyword = '') {
                 fetch("{% url 'user:merchant_list_api' %}?keyword=" + encodeURIComponent(keyword), {
                     method: 'GET',
@@ -266,10 +266,12 @@
                         const merchants = data.data;
                         let html = '';
                         merchants.forEach(merchant => {
+                            // ✅ 直接使用后端返回的完整路径，无任何手动拼接
+                            const logoUrl = merchant.logo || '/static/main/img/merchant/default_merchant.jpg';
                             html += `
                                 <div class="col-md-4">
                                     <div class="card merchant-card">
-                                        <img src="/static/main/img/merchant/${merchant.logo || 'default_merchant.jpg'}" class="card-img-top merchant-img" alt="${merchant.name}">
+                                        <img src="${logoUrl}" class="card-img-top merchant-img" alt="${merchant.name}">
                                         <div class="card-body">
                                             <h5 class="card-title">${merchant.name}</h5>
                                             <p class="card-text">分类：${merchant.category}</p>
@@ -283,7 +285,7 @@
                             `;
                         });
                         $('#merchantList').html(html);
-
+            
                         // 绑定"查看菜品"按钮事件
                         $('.viewDishBtn').click(function() {
                             currentMerchantId = $(this).data('merchant-id');

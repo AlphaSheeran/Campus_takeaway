@@ -343,7 +343,10 @@ def merchant_list_api(request):
         'id': m.id,
         'name': m.name,
         'category': m.category,
-        'logo': m.logo or 'default_merchant.jpg',
+        # 错误写法：只返回文件名，前端拼接static
+        # 'logo': m.logo or 'default_merchant.jpg',
+        # 正确写法：返回完整的media路径
+        'logo': f"/media/main/img/merchant/{m.logo}" if m.logo else "/static/main/img/merchant/default_merchant.jpg",
         'score': float(m.score) if hasattr(m, 'score') else 4.5  # 兼容无score字段的情况
     } for m in merchants]
     return JsonResponse({'code': 1, 'data': data})
@@ -796,6 +799,74 @@ def merchant_profile(request):
         'merchant': merchant
     }
     return render(request, 'main/merchant/profile.html', context)
+
+@merchant_login_required
+@ensure_csrf_cookie
+def merchant_logo_update_api(request):
+    """商户Logo上传API（补充缺失的核心接口）"""
+    if request.method != 'POST':
+        return JsonResponse({'code': 0, 'msg': '仅支持POST请求'})
+    
+    try:
+        merchant_id = request.session.get('merchant_id')
+        if not merchant_id:
+            return JsonResponse({'code': 0, 'msg': '商户未登录，请重新登录'})
+        
+        # 获取上传的文件
+        logo_file = request.FILES.get('logo')
+        if not logo_file:
+            return JsonResponse({'code': 0, 'msg': '请选择要上传的图片'})
+        
+        # 验证文件类型（仅允许jpg/png）
+        allowed_extensions = ['.jpg', '.jpeg', '.png']
+        file_ext = os.path.splitext(logo_file.name)[1].lower()
+        if file_ext not in allowed_extensions:
+            return JsonResponse({'code': 0, 'msg': '仅支持jpg/jpeg/png格式的图片'})
+        
+        # 验证文件大小（限制2MB以内）
+        if logo_file.size > 2 * 1024 * 1024:
+            return JsonResponse({'code': 0, 'msg': '图片大小不能超过2MB'})
+        
+        # 获取当前商户信息
+        merchant = get_object_or_404(Merchant, id=merchant_id)
+        
+        # 1. 删除旧Logo（如果存在）
+        if merchant.logo:
+            old_logo_path = os.path.join(settings.MEDIA_ROOT, 'main/img/merchant', merchant.logo)
+            if os.path.exists(old_logo_path):
+                try:
+                    os.remove(old_logo_path)
+                except Exception as e:
+                    print(f"删除旧Logo失败：{e}")  # 仅打印日志，不中断流程
+        
+        # 2. 生成唯一文件名（避免重复）
+        logo_name = f"merchant_{merchant_id}_{uuid.uuid4().hex[:8]}{file_ext}"
+        
+        # 3. 确保保存目录存在
+        save_dir = os.path.join(settings.MEDIA_ROOT, 'main/img/merchant')
+        os.makedirs(save_dir, exist_ok=True)  # 不存在则创建
+        
+        # 4. 保存新Logo文件
+        save_path = os.path.join(save_dir, logo_name)
+        with open(save_path, 'wb') as f:
+            for chunk in logo_file.chunks():
+                f.write(chunk)
+        
+        # 5. 更新商户的logo字段
+        merchant.logo = logo_name
+        merchant.save()
+        
+        return JsonResponse({
+            'code': 1,
+            'msg': 'Logo上传成功',
+            'logo_name': logo_name  # 返回新logo名称，供前端刷新
+        })
+    
+    except Exception as e:
+        # 捕获所有异常，返回具体错误（方便调试）
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'code': 0, 'msg': f'Logo上传失败：{str(e)}'})
 
 @merchant_login_required
 def dish_list(request):
