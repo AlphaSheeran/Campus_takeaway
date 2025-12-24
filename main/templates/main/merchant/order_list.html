@@ -1,9 +1,8 @@
 {% extends 'main/base.html' %}
 {% block title %}商户订单管理 - 校园外卖{% endblock %}
 
-<!-- 1. 替换导航栏为你的nav.html -->
 {% block header %}
-    {% include 'common/nav.html' %}  <!-- 确保nav.html路径正确，如实际是main/common/nav.html则改为main/common/nav.html -->
+    {% include 'common/nav.html' %}
 {% endblock %}
 
 {% block content %}
@@ -142,12 +141,12 @@
 </div>
 {% endblock %}
 
-<!-- 2. 修复按钮JS（利用nav中已有的jQuery，避免重复引入） -->
+<!-- 修复按钮JS -->
 {% block extra_js %}
 <script>
-// 确保DOM加载完成 + 避免jQuery冲突
+// 确保DOM加载完成避免jQuery冲突
 $(document).ready(function() {
-    // 绑定按钮点击事件（修复核心：用on委托，兼容动态渲染）
+    // 绑定按钮点击事件
     $(document).on('click', '.handleOrderBtn', function() {
         const orderId = $(this).data('order-id');
         const targetStatus = $(this).data('target-status');
@@ -167,7 +166,7 @@ $(document).ready(function() {
             return;
         }
 
-        // 调用API（简化版，利用nav中已有的jQuery）
+        // 调用API
         $.ajax({
             url: '/merchant/order/update/api/',
             type: 'POST',
@@ -193,7 +192,6 @@ $(document).ready(function() {
         });
     });
 
-    // 兼容CSRF Token获取（备用）
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {

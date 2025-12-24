@@ -3,7 +3,7 @@
 {% block title %}个人中心 - 校园外卖平台{% endblock %}
 
 {% block content %}
-<!-- 页面提示信息（成功/错误提示） -->
+<!-- 页面提示信息 -->
 {% if messages %}
 <div class="container mt-3">
     {% for message in messages %}
@@ -20,7 +20,7 @@
     <h2 class="text-center mb-5"><i class="bi bi-user-circle" style="font-size: 1.5em;"></i> 个人中心</h2>
 
     <div class="row">
-        <!-- 左侧功能菜单（占 3 列） -->
+        <!-- 左侧功能菜单 -->
         <div class="col-md-3">
             <div class="card shadow-sm sticky-top" style="top: 20px;">
                 <div class="card-header bg-primary text-white">
@@ -48,7 +48,6 @@
                         </a>
                     </li>
                     <li class="list-group-item">
-                        <!-- 修正：绝对路径改为命名空间URL -->
                         <a href="{% url 'user:user_logout' %}" class="text-decoration-none text-danger">
                             <i class="bi bi-sign-out"></i> 退出登录
                         </a>
@@ -57,14 +56,13 @@
             </div>
         </div>
 
-        <!-- 右侧内容区域（占 9 列） -->
+        <!-- 右侧内容区域 -->
         <div class="col-md-9">
             <div class="tab-content" id="profileTabContent">
                 <!-- 1. 个人信息模块 -->
                 <div class="tab-pane fade show active" id="info-tab">
                     <div class="card shadow-sm p-4 mb-4">
                         <h4 class="card-title mb-3"><i class="bi bi-user"></i> 个人信息</h4>
-                        <!-- 修正：表单提交地址改为命名空间URL -->
                         <form method="POST" action="{% url 'user:user_profile' %}">
                             {% csrf_token %}
                             <input type="hidden" name="edit_info" value="1">
@@ -112,7 +110,7 @@
                     <div class="card shadow-sm p-4 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4 class="card-title mb-0"><i class="bi bi-map-marker"></i> 收货地址管理</h4>
-                            <!-- 新增地址按钮（触发模态框） -->
+                            <!-- 新增地址按钮 -->
                             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addressModal">
                                 <i class="bi bi-plus"></i> 新增地址
                             </button>
@@ -131,7 +129,6 @@
                                                 <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#addressModal" onclick="editAddress({{ addr.id }}, '{{ addr.receiver|escapejs }}', '{{ addr.phone|escapejs }}', '{{ addr.detail|escapejs }}', {{ addr.is_default }})">
                                                     <i class="bi bi-pencil" style="font-size: 1em;"></i>
                                                 </button>
-                                                <!-- 修正：表单提交地址改为命名空间URL -->
                                                 <form method="POST" action="{% url 'user:user_profile' %}" class="d-inline">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="delete_address" value="1">
@@ -164,7 +161,6 @@
                 <div class="tab-pane fade" id="password-tab">
                     <div class="card shadow-sm p-4 mb-4">
                         <h4 class="card-title mb-3"><i class="bi bi-lock"></i> 密码修改</h4>
-                        <!-- 修正：表单提交地址改为命名空间URL -->
                         <form method="POST" action="{% url 'user:user_profile' %}">
                             {% csrf_token %}
                             <input type="hidden" name="change_password" value="1">
@@ -239,12 +235,10 @@
                                         </td>
                                         <td>{{ order.create_time|date:'Y-m-d H:i' }}</td>
                                         <td>
-                                            <!-- 修正：绝对路径改为命名空间URL -->
                                             <a href="{% url 'user:user_order_detail' %}?order_no={{ order.order_no }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-eye"></i> 查看详情
                                             </a>
                                             {% if order.status == 0 %}
-                                            <!-- 修正：绝对路径改为命名空间URL -->
                                             <a href="{% url 'user:user_pay' %}?order_no={{ order.order_no }}" class="btn btn-sm btn-outline-success">
                                                 <i class="bi bi-credit-card"></i> 去支付
                                             </a>
@@ -256,7 +250,6 @@
                             </table>
                         </div>
                         <div class="text-center">
-                            <!-- 修正：绝对路径改为命名空间URL -->
                             <a href="{% url 'user:user_order_list' %}" class="btn btn-outline-secondary">
                                 <i class="bi bi-list"></i> 查看全部订单
                             </a>
@@ -273,16 +266,13 @@
     </div>
 </div>
 
-<!-- 新增/编辑地址模态框（Bootstrap 模态框） -->
 <div class="modal fade" id="addressModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <!-- 修正：表单提交地址改为命名空间URL -->
             <form method="POST" action="{% url 'user:user_profile' %}">
                 {% csrf_token %}
                 <input type="hidden" name="save_address" value="1">
-                <input type="hidden" name="address_id" id="modal_address_id" value="">  <!-- 编辑时存储地址ID -->
-                
+                <input type="hidden" name="address_id" id="modal_address_id" value="">
                 <div class="modal-header">
                     <h5 class="modal-title" id="addressModalTitle">新增收货地址</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -327,9 +317,8 @@
     </div>
 </div>
 
-<!-- 页面交互脚本（地址编辑模态框赋值） -->
 <script>
-// 编辑地址：将地址数据填充到模态框
+// 将地址数据填充到模态框
 function editAddress(id, receiver, phone, detail, isDefault) {
     document.getElementById('modal_address_id').value = id;
     document.getElementById('modal_receiver').value = receiver;
@@ -339,7 +328,7 @@ function editAddress(id, receiver, phone, detail, isDefault) {
     document.getElementById('addressModalTitle').innerText = '编辑收货地址';
 }
 
-// 新增地址：清空模态框数据
+// 清空模态框数据
 document.getElementById('addressModal').addEventListener('show.bs.modal', function (event) {
     if (event.relatedTarget.textContent.includes('新增地址')) {
         document.getElementById('modal_address_id').value = '';
@@ -352,7 +341,7 @@ document.getElementById('addressModal').addEventListener('show.bs.modal', functi
 });
 </script>
 
-<!-- 样式补充（可选） -->
+<!-- 样式补充 -->
 <style>
 .required:after {
     content: "*";

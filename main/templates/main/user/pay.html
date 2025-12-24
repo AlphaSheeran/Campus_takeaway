@@ -90,7 +90,7 @@
         </div>
     </div>
 
-    <!-- 支付方式选择 + 微信支付二维码 -->
+    <!-- 支付方式选择微信支付二维码 -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-light fw-bold text-center">
             确认支付
@@ -107,7 +107,7 @@
             </div>
             {% endif %}
 
-            <!-- 模拟支付按钮（对接后端POST接口） -->
+            <!-- 模拟支付按钮 -->
             <button id="simulatePayBtn" class="btn btn-success mt-3" data-order-no="{{ order_no }}">
                 <i class="bi bi-check-circle"></i> 模拟{{ pay_type_text }}支付成功
             </button>
@@ -150,7 +150,7 @@ $(function() {
         const orderNo = $(this).data('order-no');
         $(this).prop('disabled', true).text('支付中...');
         
-        // 调用后端POST接口（对接user_pay的POST逻辑）
+        // 调用后端POST接口
         fetch("/user/pay/", {
             method: 'POST',
             headers: {
@@ -167,7 +167,7 @@ $(function() {
                 $('#payMsg').text(data.msg).addClass('text-success');
                 // 显示成功模态框
                 $('#paySuccessModal').modal('show');
-                // 模态框关闭后跳转（可选）
+                // 模态框关闭后跳转
                 $('#paySuccessModal').on('hidden.bs.modal', function() {
                     window.location.href = `/user/order/detail/?order_no=${orderNo}`;
                 });

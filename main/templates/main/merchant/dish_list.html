@@ -249,7 +249,7 @@
             });
         }
 
-        // 保存新增菜品（修复：添加表单验证）
+        // 保存新增菜品
         function saveAddDish() {
             // 表单必填项验证
             const name = $('#addDishName').val().trim();
@@ -309,7 +309,7 @@
             });
         }
 
-        // 更改菜品状态（上架/下架）
+        // 更改菜品状态
         function changeDishStatus(dishId, status) {
             if (!dishId) {
                 alert('菜品ID不能为空！');
@@ -342,7 +342,7 @@
             });
         }
         function deleteDish(dishId) {
-            // 1. 确认删除（防止误操作）
+            // 1. 确认删除
             if (!confirm('确定要删除该菜品吗？删除后无法恢复！')) {
                 return;
             }

@@ -46,7 +46,6 @@
 <body>
     {% include 'main/common/nav.html' %}
 
-    <!-- 顶部Banner -->
     <div class="banner">
         <div class="text-center">
             <h1 class="display-4">校园美食，一键送达</h1>
@@ -55,7 +54,6 @@
     </div>
 
     <div class="container">
-        <!-- 分类导航 -->
         <div class="row mb-5">
             <div class="col-md-3 category-card">
                 <div class="category-icon">🍚</div>
@@ -83,11 +81,10 @@
         <div class="hot-merchant">
             <h3 class="mb-3">热门商家</h3>
             <div class="row" id="hotMerchantList">
-                <!-- 动态渲染热门商家 -->
             </div>
         </div>
 
-        <!-- 最近订单（已登录显示） -->
+        <!-- 最近订单 -->
         {% if request.session.user_id %}
         <div class="recent-orders mt-5">
             <h3 class="mb-3">我的最近订单</h3>
@@ -100,7 +97,7 @@
 
     <script>
         $(function() {
-            // 加载热门商家（已审核通过+评分≥4.5）
+            // 加载热门商家，已审核通过+评分≥4.5
             loadHotMerchants();
             
             // 已登录用户加载最近订单
@@ -119,7 +116,6 @@
                         const merchants = data.data.filter(m => m.score >= 4.5);
                         let html = '';
                         merchants.slice(0, 6).forEach(merchant => {
-                            // ✅ 直接使用后端返回的完整路径，不拼接任何前缀
                             const logoUrl = merchant.logo || '/static/main/img/merchant/default_merchant.jpg';
                             html += `
                                 <div class="col-md-4 hot-merchant">
@@ -146,7 +142,7 @@
                 });
             }
 
-            // 加载最近订单（修正：API路径改为命名空间URL + 新增取消订单按钮）
+            // 加载最近订单
             function loadRecentOrders() {
                 fetch("{% url 'user:user_recent_orders_api' %}", {
                     method: 'GET',
@@ -168,11 +164,10 @@
                         }
 
                         let html = '<div class="list-group list-group-flush">';
-                        orders.slice(0, 3).forEach(order => { // 最多显示3个
+                        orders.slice(0, 3).forEach(order => {
                             const statusText = ['待支付', '已支付', '已接单', '已完成', '已取消'][order.status];
                             const statusClass = ['text-warning', 'text-primary', 'text-info', 'text-success', 'text-danger'][order.status];
                             
-                            // 新增：判断是否显示取消按钮
                             let cancelBtn = '';
                             if (order.status === 0 || order.status === 1) {
                                 cancelBtn = `
@@ -202,7 +197,6 @@
                         html += '</div>';
                         $('#recentOrdersContainer').html(html);
                         
-                        // 新增：绑定首页取消订单按钮事件
                         $('.cancelOrderBtn').click(function() {
                             const orderNo = $(this).data('order-no');
                             if (!confirm('确定要取消该订单吗？取消后将无法恢复！')) {
@@ -220,7 +214,6 @@
                             .then(res => res.json())
                             .then(data => {
                                 alert(data.msg);
-                                // 取消成功重新加载最近订单
                                 if (data.code === 1) {
                                     loadRecentOrders();
                                 }

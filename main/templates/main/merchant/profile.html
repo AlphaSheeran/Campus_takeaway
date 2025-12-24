@@ -42,7 +42,7 @@
             <div class="col-md-4">
                 <div class="profile-card text-center">
                     <h5 class="card-title mb-3">店铺信息</h5>
-                    <!-- 店铺Logo预览：修复核心行（用Django default过滤器替换||） -->
+                    <!-- 店铺Logo预览 -->
                     <img id="logoPreview" class="logo-preview" 
                          src="/media/main/img/merchant/{{ merchant.logo|default:'default_merchant.jpg' }}" 
                          alt="店铺Logo">
@@ -135,7 +135,7 @@
                     body: formData
                 })
                 .then(response => {
-                    // 先检查响应状态码（关键：补充404/500的处理）
+                    // 先检查响应状态码，补充404/500的处理
                     if (!response.ok) {
                         if (response.status === 404) {
                             throw new Error('接口不存在，请检查后端路由配置');
@@ -164,7 +164,7 @@
                 .catch(error => {
                     console.error('Logo上传失败：', error);
                     $('#logoMsg').removeClass('d-none text-success').addClass('text-danger');
-                    // 显示具体错误信息（而非笼统的“网络错误”）
+                    // 显示具体错误信息
                     $('#logoMsg').text(`上传失败：${error.message}`);
                 });
             });
@@ -192,9 +192,6 @@
                     if (data.code === 1) {
                         $('#profileMsg').removeClass('d-none text-danger').addClass('text-success');
                         $('#profileMsg').text('保存成功！');
-                        // 更新session中的商户名称（注意：前端无法直接修改Django session，这里需要后端配合）
-                        // 错误修正：request.session是后端变量，前端JS无法访问，注释掉这行
-                        // request.session.merchant_name = formData.name;
                         setTimeout(() => $('#profileMsg').addClass('d-none'), 2000);
                     } else {
                         $('#profileMsg').removeClass('d-none text-success').addClass('text-danger');
@@ -217,7 +214,6 @@
                         $('#username').val(merchant.username);
                         $('#name').val(merchant.name);
                         $('#category').val(merchant.category);
-                        // 加载Logo：JS里的||是合法的
                         $('#logoPreview').attr('src', `/media/main/img/merchant/${merchant.logo || 'default_merchant.jpg'}`);
                         // 存储商户信息到页面
                         window.merchantInfo = merchant;

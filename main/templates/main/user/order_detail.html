@@ -2,13 +2,12 @@
 {% block title %}订单详情 - 校园外卖{% endblock %}
 {% block content %}
 <div class="container mt-4 mb-5">
-    <!-- 头部：返回+标题 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <a href="{% url 'user:user_order_list' %}" class="btn btn-outline-primary">
             <i class="bi bi-arrow-left"></i> 返回订单列表
         </a>
         <h2>订单详情</h2>
-        <div></div> <!-- 占位，保持布局对称 -->
+        <div></div>
     </div>
 
     <!-- 订单基础信息卡片 -->
@@ -121,7 +120,7 @@
         </div>
     </div>
 
-    <!-- 操作按钮（仅待支付显示支付按钮 + 新增取消订单按钮） -->
+    <!-- 操作按钮 -->
     <div class="text-center">
         {% if order.status == 0 %}
         <a href="{% url 'user:user_pay' %}?order_no={{ order.order_no }}" class="btn btn-success me-3">
@@ -139,7 +138,7 @@
     </div>
 </div>
 
-<!-- 新增：提示模态框 -->
+<!-- 提示模态框 -->
 <div class="modal fade" id="tipsModal" tabindex="-1" aria-labelledby="tipsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
@@ -157,15 +156,12 @@
     </div>
 </div>
 
-<!-- 补充：Django模板字典取值过滤器（解决order_status_map取值问题） -->
 {% load static %}
 <script>
-// 前端兜底：如果模板过滤器未配置，手动处理状态样式
 document.addEventListener('DOMContentLoaded', function() {
-    // 无需额外操作，仅为兼容
 });
 
-// 新增：取消订单逻辑
+// 取消订单逻辑
 $(function() {
     $('#cancelOrderBtn').click(function() {
         const orderNo = $(this).data('order-no');

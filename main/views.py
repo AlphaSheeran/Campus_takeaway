@@ -92,17 +92,16 @@ def user_logout(request):
 
 @user_login_required
 def user_profile(request):
-    """用户个人中心（整合所有模块逻辑）"""
+    """用户个人中心"""
     # 1. 获取当前登录用户信息
     user = get_object_or_404(User, id=request.session['user_id'])
-    # 获取用户的收货地址（默认地址排前面）
+    # 获取用户的收货地址
     addresses = Address.objects.filter(user=user).order_by('-is_default')
-    # 获取用户最近 5 条订单（按创建时间倒序）
+    # 获取用户最近5条订单
     recent_orders = Order.objects.filter(user=user).order_by('-create_time')[:5]
 
-    # 2. 处理 POST 请求（表单提交）
+    # 2. POST表单提交
     if request.method == 'POST':
-        # 2.1 编辑个人信息（昵称、手机号）
         if 'edit_info' in request.POST:
             nickname = request.POST.get('nickname', '').strip()
             phone = request.POST.get('phone', '').strip()
@@ -118,7 +117,7 @@ def user_profile(request):
                 messages.success(request, "个人信息修改成功！")
                 return redirect('/user/profile/')  # 刷新页面
         
-        # 2.2 新增/编辑收货地址
+        # 新增/编辑收货地址
         elif 'save_address' in request.POST:
             address_id = request.POST.get('address_id', '')  # 编辑时传地址ID，新增时为空
             receiver = request.POST.get('receiver', '').strip()
@@ -131,7 +130,7 @@ def user_profile(request):
                 messages.error(request, "收件人、手机号、详细地址不能为空！")
                 return redirect('/user/profile/')
             
-            # 处理：新增地址 / 编辑地址
+            # 新增地址/编辑地址
             if address_id:  # 编辑已有地址
                 addr = get_object_or_404(Address, id=address_id, user=user)
             else:  # 新增地址
@@ -180,12 +179,12 @@ def user_profile(request):
                 del request.session['user_name']
                 return redirect('/user/login/')
 
-    # 3. 组织数据传递给模板
+    # 3. 数据传递给模板
     context = {
         'user': user,  # 当前用户信息
         'addresses': addresses,  # 收货地址列表
         'recent_orders': recent_orders,  # 最近订单
-        # 订单状态映射（数字转中文）
+        # 订单状态映射
         'order_status_map': {
             0: '待支付',
             1: '已支付',
@@ -199,7 +198,7 @@ def user_profile(request):
 @user_login_required
 def user_order_list(request):
     """用户订单列表页面"""
-    # 1. 查询订单（关联商家、订单项、菜品）
+    # 1. 查询订单
     user_id = request.session['user_id']
     orders = Order.objects.filter(user_id=user_id) \
         .select_related('merchant') \
@@ -210,7 +209,7 @@ def user_order_list(request):
     order_list = []
     for order in orders:
         order_items = []
-        for item in order.items.all():  # 遍历关联名称 'items'
+        for item in order.items.all():
             order_items.append({
                 'dish_name': item.dish.name,
                 'price': float(item.price),
@@ -235,7 +234,7 @@ def user_recent_orders_api(request):
     """用户最近订单API：返回用户最近3条订单"""
     user_id = request.session.get('user_id')
     
-    # 查询用户最近3条订单（关联商家信息）
+    # 查询用户最近3条订单
     orders = Order.objects.filter(
         user_id=user_id
     ).select_related('merchant').order_by('-create_time')[:3]
@@ -265,11 +264,11 @@ def user_recent_orders_api(request):
         'create_time': order.create_time.strftime('%Y-%m-%d %H:%M'),
         'total_price': order.total_price,
         'status': order.status,
-        'status_text': ['待支付', '已支付', '已接单', '已完成', '已取消'][order.status],  # 新增
+        'status_text': ['待支付', '已支付', '已接单', '已完成', '已取消'][order.status],
     } for order in orders]
     return JsonResponse({'code': 1, 'data': order_list})
 
-# 取消订单API（基于session验证用户，适配你的项目）
+# 取消订单API，基于session验证用户
 @csrf_exempt
 def cancel_order_api(request):
     """
@@ -278,7 +277,7 @@ def cancel_order_api(request):
     请求参数：{"order_no": "订单号"}
     返回：{"code": 0/1, "msg": "提示信息"}
     """
-    # 1. 验证用户是否登录（基于session）
+    # 1. 验证用户是否登录，基于session）
     if not request.session.get('user_id'):
         return JsonResponse({'code': 0, 'msg': '请先登录'})
     
@@ -328,12 +327,11 @@ def merchant_order_list(request):
         .prefetch_related('items__dish') \
         .order_by('-create_time')
     
-    # 兼容状态筛选（保留原有筛选逻辑）
     status_filter = request.GET.get('status', '')
     if status_filter.isdigit():
         orders = orders.filter(status=int(status_filter))
     
-    # 构建订单数据（供模板渲染）
+    # 构建订单数据
     order_list = []
     for order in orders:
         order_items = []
@@ -365,7 +363,7 @@ def merchant_order_list(request):
             }.get(order.status, 'badge bg-secondary')
         })
     
-    # 核心：传递request + 合并原有上下文
+    # 传递request+合并原有上下文
     context = {
         'order_list': order_list,
         'request': request,  # 确保模板能读取session
@@ -393,11 +391,8 @@ def merchant_list_api(request):
         'id': m.id,
         'name': m.name,
         'category': m.category,
-        # 错误写法：只返回文件名，前端拼接static
-        # 'logo': m.logo or 'default_merchant.jpg',
-        # 正确写法：返回完整的media路径
         'logo': f"/media/main/img/merchant/{m.logo}" if m.logo else "/static/main/img/merchant/default_merchant.jpg",
-        'score': float(m.score) if hasattr(m, 'score') else 4.5  # 兼容无score字段的情况
+        'score': float(m.score) if hasattr(m, 'score') else 4.5
     } for m in merchants]
     return JsonResponse({'code': 1, 'data': data})
 
@@ -412,7 +407,7 @@ def dish_list_api(request):
         'category': d.category,
         'price': float(d.price),
         'stock': d.stock,
-        # 手动拼接正确路径（兼容模型配置错误的情况）
+        # 手动拼接正确路径
         'image_url': f"{settings.MEDIA_URL}main/img/dish/{d.image}" if d.image else f"{settings.STATIC_URL}img/default-dish.jpg"
     } for d in dishes]
     return JsonResponse({'code': 1, 'data': data})
@@ -432,30 +427,28 @@ def dish_detail_api(request):
         if not dish_id or not dish_id.isdigit():
             return JsonResponse({'code': 0, 'msg': '缺少有效菜品ID'})
         
-        # 3. 验证菜品归属（加异常捕获）
+        # 3. 验证菜品归属
         try:
             dish = Dish.objects.get(id=int(dish_id), merchant_id=merchant_id)
         except Dish.DoesNotExist:
             return JsonResponse({'code': 0, 'msg': '菜品不存在或无权限编辑'})
         
-        # 4. 构造可序列化的返回数据（关键修复）
-        # - Decimal转float，删除ImageFieldFile对象，只返回image_url
+        # 4. 构造可序列化的返回数据
         image_url = f"{settings.MEDIA_URL}main/img/dish/{dish.image}" if dish.image else None
         data = {
             'id': dish.id,
             'name': dish.name,
-            'price': float(dish.price),  # 修复：Decimal转float（避免序列化错误）
+            'price': float(dish.price),
             'category': dish.category,
             'stock': dish.stock,
-            'description': dish.description or '',  # 空值兜底
-            # 移除：'image': dish.image,  # 避免ImageFieldFile序列化错误
+            'description': dish.description or '',
             'image_url': image_url,
             'status': dish.status
         }
         return JsonResponse({'code': 1, 'data': data})
     
     except Exception as e:
-        # 捕获所有异常，返回具体错误（方便调试）
+        # 捕获所有异常，返回具体错误
         import traceback
         traceback.print_exc()
         return JsonResponse({'code': 0, 'msg': f'加载菜品详情失败：{str(e)}'})
@@ -511,7 +504,7 @@ def submit_order_api(request):
                 return JsonResponse({'code': 0, 'msg': f'菜品库存不足：{dish.name}'})
             total_price += dish.price * quantity
 
-        # 创建订单（事务保证原子性）
+        # 创建订单
         with transaction.atomic():
             order = Order.objects.create(
                 order_no=generate_order_no(),
@@ -598,7 +591,7 @@ def user_order_detail(request):
 @user_login_required
 @ensure_csrf_cookie
 def user_order_list_api(request):
-    """用户订单列表API（支持按状态筛选）"""
+    """用户订单列表API"""
     user_id = request.session.get('user_id')
     
     # 筛选条件：状态
@@ -636,19 +629,19 @@ def user_order_list_api(request):
 @user_login_required
 @ensure_csrf_cookie
 def user_pay(request):
-    """用户支付功能（完善微信支付+订单项展示）"""
+    """用户支付功能"""
     user_id = request.session.get('user_id')
 
-    # GET请求：返回支付页面（补充订单项、微信支付参数、商家联系信息）
+    # GET请求：返回支付页面
     if request.method == 'GET':
         order_no = request.GET.get('order_no')
         order_id = request.GET.get('order_id')
         
-        # 1. 参数验证（优化：返回重定向而非纯文本，更友好）
+        # 1. 参数验证
         if not (order_no or order_id):
             return render(request, 'main/error.html', {'msg': '缺少订单号参数', 'redirect_url': '/user/order_list/'})
         
-        # 2. 查询订单（加try-except捕获异常）
+        # 2. 查询订单
         try:
             if order_no:
                 order = Order.objects.get(order_no=order_no, user_id=user_id)
@@ -657,7 +650,7 @@ def user_pay(request):
         except Order.DoesNotExist:
             return render(request, 'main/error.html', {'msg': '订单不存在或不属于当前用户', 'redirect_url': '/user/order_list/'})
         
-        # 3. 订单状态验证（优化：返回页面提示而非纯文本）
+        # 3. 订单状态验证
         if order.status != 0:
             status_text = {0: '待支付', 1: '已支付', 2: '已接单', 3: '已完成', 4: '已取消'}.get(order.status, '未知状态')
             return render(request, 'main/error.html', {
@@ -665,14 +658,14 @@ def user_pay(request):
                 'redirect_url': f'/user/order_detail/?order_no={order.order_no}'
             })
         
-        # 4. 查询订单项（用于支付页面展示菜品明细）
+        # 4. 查询订单项
         order_items = OrderItem.objects.filter(order=order)
-        # 计算订单项小计（兼容新旧数据）
+        # 计算订单项小计
         for item in order_items:
-            if not item.subtotal:  # 如果subtotal为空（旧数据），实时计算
+            if not item.subtotal:  # 如果subtotal为空，实时计算
                 item.subtotal = item.quantity * item.price
         
-        # 5. 构造微信支付参数（模拟，真实场景对接微信SDK）
+        # 5. 构造微信支付参数（此处模拟，真实场景对接微信SDK）
         # 微信支付金额单位为分，需转换
         total_fee = int(order.total_price * 100)
         # 模拟微信支付二维码链接（真实场景替换为微信统一下单接口返回的code_url）
@@ -680,12 +673,11 @@ def user_pay(request):
         
         # 6. 构造上下文（补充订单项、微信支付参数、商家联系信息）
         context = {
-            'order': order,  # 传递完整订单对象（方便前端调用更多字段）
+            'order': order,  # 传递完整订单对象
             'order_no': order.order_no,
             'total_price': float(order.total_price),
-            'total_fee': total_fee,  # 微信支付金额（分）
+            'total_fee': total_fee,  # 微信支付金额
             'merchant_name': order.merchant.name,
-            # 新增：商家接单联系信息
             'merchant_contact_name': order.merchant.contact_name or '未填写',
             'merchant_contact_phone': order.merchant.contact_phone or '未填写',
             'pay_type': order.pay_type,  # 传递数字类型（0-校园卡/1-微信）
@@ -697,7 +689,7 @@ def user_pay(request):
         }
         return render(request, 'main/user/pay.html', context)
 
-    # POST请求：处理支付提交（保留核心逻辑，优化异常处理）
+    # POST请求：处理支付提交
     elif request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -706,16 +698,16 @@ def user_pay(request):
                 return JsonResponse({'code': 0, 'msg': '订单号不能为空'})
             
             with transaction.atomic():
-                # 1. 查询订单（加行锁，防止并发支付）
+                # 1. 查询订单
                 order = Order.objects.select_for_update().get(order_no=order_no, user_id=user_id)
                 
                 # 2. 状态验证
                 if order.status != 0:
                     return JsonResponse({'code': 0, 'msg': '订单已支付或已取消，无需重复支付'})
                 
-                # 3. 更新订单状态（0-待支付 → 1-已支付）
+                # 3. 更新订单状态
                 order.status = 1
-                order.pay_time = timezone.now()  # 替换datetime.now()为Django推荐的timezone
+                order.pay_time = timezone.now()
                 # 确保支付方式为微信（如果前端选择微信支付，可动态接收pay_type）
                 # 如需支持校园卡支付，可从前端接收pay_type参数：order.pay_type = data.get('pay_type', 1)
                 order.pay_type = 1  # 固定为微信支付（可根据需求调整）
@@ -733,7 +725,6 @@ def user_pay(request):
         except Exception as e:
             return JsonResponse({'code': 0, 'msg': f'支付失败：{str(e)}'})
 
-    # 非GET/POST请求
     return JsonResponse({'code': 0, 'msg': '请求方式错误'})
 
 
@@ -770,7 +761,6 @@ def merchant_login_api(request):
         username = data.get('username')
         password = data.get('password')
 
-        # 补充：参数非空校验
         if not username or not password:
             return JsonResponse({'code': 0, 'msg': '账号/密码不能为空'})
 
@@ -785,10 +775,9 @@ def merchant_login_api(request):
         if not check_password(password, merchant.password):
             return JsonResponse({'code': 0, 'msg': '密码错误'})
 
-        # 核心修复：添加session配置，确保生效
         request.session['merchant_id'] = merchant.id
         request.session['merchant_name'] = merchant.name
-        request.session.set_expiry(86400)  # 设置session有效期1天（86400秒）
+        request.session.set_expiry(86400)  # 设置session有效期1天
         request.session.modified = True  # 强制标记session已修改，确保写入数据库
 
         return JsonResponse({'code': 1, 'msg': '登录成功'})
@@ -811,10 +800,10 @@ def merchant_register_api(request):
         if Merchant.objects.filter(username=username).exists():
             return JsonResponse({'code': 0, 'msg': '商户账号已存在'})
 
-        # 创建商户（密码加密）
+        # 创建商户
         Merchant.objects.create(
             username=username,
-            password=make_password(password),  # 显式加密
+            password=make_password(password),
             name=name,
             category=category,
             status=0  # 0-待审核
@@ -887,7 +876,7 @@ def merchant_profile(request):
 @merchant_login_required
 @ensure_csrf_cookie
 def merchant_logo_update_api(request):
-    """商户Logo上传API（补充缺失的核心接口）"""
+    """商户Logo上传API"""
     if request.method != 'POST':
         return JsonResponse({'code': 0, 'msg': '仅支持POST请求'})
     
@@ -923,7 +912,7 @@ def merchant_logo_update_api(request):
                 except Exception as e:
                     print(f"删除旧Logo失败：{e}")  # 仅打印日志，不中断流程
         
-        # 2. 生成唯一文件名（避免重复）
+        # 2. 生成唯一文件名
         logo_name = f"merchant_{merchant_id}_{uuid.uuid4().hex[:8]}{file_ext}"
         
         # 3. 确保保存目录存在
@@ -947,7 +936,7 @@ def merchant_logo_update_api(request):
         })
     
     except Exception as e:
-        # 捕获所有异常，返回具体错误（方便调试）
+        # 捕获所有异常，返回具体错误
         import traceback
         traceback.print_exc()
         return JsonResponse({'code': 0, 'msg': f'Logo上传失败：{str(e)}'})
@@ -967,7 +956,7 @@ def merchant_dish_list_api(request):
     dishes = Dish.objects.filter(merchant_id=merchant_id)
     data = []
     for d in dishes:
-        # 拼接正确的图片URL（和兜底方案一致）
+        # 拼接正确的图片URL
         if d.image:
             image_url = f"{settings.MEDIA_URL}main/img/dish/{d.image}"
         else:
@@ -979,8 +968,7 @@ def merchant_dish_list_api(request):
             'category': d.category,
             'price': float(d.price),
             'stock': d.stock,
-            # 关键：删除'image'字段（避免序列化错误）
-            'image_url': image_url,  # 仅保留前端需要的image_url
+            'image_url': image_url,
             'status': d.status,
             'status_text': '上架' if d.status == 1 else '下架'
         })
@@ -990,7 +978,7 @@ def merchant_dish_list_api(request):
 @merchant_login_required
 @ensure_csrf_cookie
 def add_dish_api(request):
-    """新增菜品API（修复：添加全局异常捕获）"""
+    """新增菜品API"""
     if request.method == 'POST':
         try:
             # 获取当前登录商家ID
@@ -998,7 +986,7 @@ def add_dish_api(request):
             if not merchant_id:
                 return JsonResponse({'code': 0, 'msg': '请先登录'})
 
-            # 获取表单数据（支持文件上传）
+            # 获取表单数据
             name = request.POST.get('name', '').strip()
             category = request.POST.get('category', '').strip()
             price = request.POST.get('price')
@@ -1018,22 +1006,22 @@ def add_dish_api(request):
             except ValueError:
                 return JsonResponse({'code': 0, 'msg': '价格或库存格式错误'})
 
-            # 处理图片保存（如果有上传）
+            # 处理图片保存
             image_name = None
             if image_file:
-                # 生成唯一文件名（避免重复）
+                # 生成唯一文件名
                 image_ext = os.path.splitext(image_file.name)[1]
                 image_name = f"dish_{uuid.uuid4().hex[:8]}{image_ext}"
                 # 保存路径（需在settings.py配置MEDIA_ROOT）
                 save_dir = os.path.join(settings.MEDIA_ROOT, 'main/img/dish')
                 os.makedirs(save_dir, exist_ok=True)
                 save_path = os.path.join(save_dir, image_name)
-                # 写入文件（增加权限检查）
+                # 写入文件
                 with open(save_path, 'wb') as f:
                     for chunk in image_file.chunks():
                         f.write(chunk)
 
-            # 创建菜品（关联当前商家）
+            # 创建菜品，关联当前商家
             Dish.objects.create(
                 merchant_id=merchant_id,
                 name=name,
@@ -1046,7 +1034,7 @@ def add_dish_api(request):
             )
             return JsonResponse({'code': 1, 'msg': '菜品新增成功'})
         except Exception as e:
-            # 捕获所有异常，返回错误信息（方便调试）
+            # 捕获所有异常，返回错误信息
             import traceback
             traceback.print_exc()
             return JsonResponse({'code': 0, 'msg': f'新增菜品失败：{str(e)}'})
@@ -1076,9 +1064,9 @@ def edit_dish_api(request):
             price = request.POST.get('price')
             stock = request.POST.get('stock')
             description = request.POST.get('description', '').strip()
-            image_file = request.FILES.get('image')  # 可能更新图片
+            image_file = request.FILES.get('image')
 
-            # 基础验证（同新增）
+            # 基础验证
             if not all([name, category, price, stock]):
                 return JsonResponse({'code': 0, 'msg': '名称、分类、价格、库存为必填项'})
             
@@ -1090,14 +1078,14 @@ def edit_dish_api(request):
             except ValueError:
                 return JsonResponse({'code': 0, 'msg': '价格或库存格式错误'})
 
-            # 处理图片更新（如果有新图片）
+            # 处理图片更新
             if image_file:
-                # 删除旧图片（如果存在）
+                # 删除旧图片
                 if dish.image:
                     old_image_path = os.path.join(settings.MEDIA_ROOT, 'main/img/dish', dish.image)
                     if os.path.exists(old_image_path):
                         os.remove(old_image_path)
-                # 保存新图片（同新增逻辑）
+                # 保存新图片
                 image_ext = os.path.splitext(image_file.name)[1]
                 image_name = f"dish_{uuid.uuid4().hex[:8]}{image_ext}"
                 save_dir = os.path.join(settings.MEDIA_ROOT, 'main/img/dish')
@@ -1132,7 +1120,7 @@ def edit_dish_api(request):
 @merchant_login_required
 @ensure_csrf_cookie
 def change_dish_status_api(request):
-    """修改菜品状态API（上下架切换）"""
+    """修改菜品状态API"""
     merchant_id = request.session.get('merchant_id')
 
     if request.method == 'POST':
@@ -1157,7 +1145,7 @@ def change_dish_status_api(request):
             dish.status = target_status
             dish.save()
 
-            # 返回结果（包含当前状态文本）
+            # 返回结果
             status_text = '上架' if target_status == 1 else '下架'
             return JsonResponse({
                 'code': 1,
@@ -1186,7 +1174,7 @@ def delete_dish_api(request):
         if not merchant_id:
             return JsonResponse({'code': 0, 'msg': '商户未登录，请重新登录'})
         
-        # 2. 获取菜品ID（修复：兼容int/str类型，避免isdigit()报错）
+        # 2. 获取菜品ID
         try:
             if request.content_type == 'application/json':
                 data = json.loads(request.body)
@@ -1194,23 +1182,23 @@ def delete_dish_api(request):
             else:
                 dish_id = request.POST.get('id')
             
-            # 修复核心：先判断是否为空，再统一转字符串验证，最后转int
+            # 先判断是否为空，再统一转字符串验证，最后转int
             if not dish_id:
                 return JsonResponse({'code': 0, 'msg': '缺少有效菜品ID'})
             
-            # 统一转字符串后验证是否为数字（兼容int/str类型）
+            # 统一转字符串后验证是否为数字
             dish_id_str = str(dish_id).strip()
             if not dish_id_str.isdigit():
                 return JsonResponse({'code': 0, 'msg': '菜品ID必须为数字'})
             
-            dish_id = int(dish_id_str)  # 最终转成int用于查询
+            dish_id = int(dish_id_str)
         except Exception as e:
             return JsonResponse({'code': 0, 'msg': f'参数解析失败：{str(e)}'})
         
         # 3. 验证菜品归属并删除
         try:
             dish = Dish.objects.get(id=dish_id, merchant_id=merchant_id)
-            dish.delete()  # 物理删除（如需逻辑删除可改为dish.status=-1; dish.save()）
+            dish.delete()
             return JsonResponse({'code': 1, 'msg': '菜品删除成功'})
         except Dish.DoesNotExist:
             return JsonResponse({'code': 0, 'msg': '菜品不存在或无权限删除'})
@@ -1231,7 +1219,7 @@ def merchant_order_update_api(request):
         try:
             data = json.loads(request.body)
             order_id = data.get('order_id')
-            target_status = data.get('status')  # 2=已接单，3=已完成，4=已取消（商户仅能操作这三个状态）
+            target_status = data.get('status')  # 2=已接单，3=已完成，4=已取消
             
             # 验证参数
             if order_id is None or target_status not in [2, 3, 4]:
@@ -1243,7 +1231,7 @@ def merchant_order_update_api(request):
             except Order.DoesNotExist:
                 return JsonResponse({'code': 0, 'msg': '订单不存在或无权限操作'})
             
-            # 验证状态流转合法性（避免非法状态变更）
+            # 验证状态流转合法性，避免非法状态变更
             valid_status_flow = {
                 1: [2, 4],    # 已支付 → 可接单/取消
                 2: [3, 4],    # 已接单 → 可完成/取消
@@ -1310,7 +1298,7 @@ def merchant_audit(request):
 @admin_login_required
 @ensure_csrf_cookie
 def merchant_audit_api(request):
-    """商户审核API（查询待审核商户 + 处理审核结果）"""
+    """商户审核API"""
     if request.method == 'GET':
         # 查询所有待审核商户（status=0）
         merchants = Merchant.objects.filter(status=0).order_by('-create_time')
@@ -1326,7 +1314,7 @@ def merchant_audit_api(request):
     
     elif request.method == 'POST':
         try:
-            # 处理审核结果（通过/拒绝）
+            # 处理审核结果
             data = json.loads(request.body)
             merchant_id = data.get('merchant_id')
             audit_result = data.get('result')  # 1=通过，2=拒绝

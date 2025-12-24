@@ -31,7 +31,6 @@
                         注：注册后需等待管理员审核通过方可登录
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <!-- 修正：添加 merchant 命名空间，匹配 name=merchant_register -->
                         <a href="{% url 'merchant:merchant_register' %}">还没有账号？注册</a>
                         <button type="submit" class="btn btn-primary">登录</button>
                     </div>
@@ -51,7 +50,6 @@
                     password: $('#password').val()
                 };
 
-                // 修正：添加 merchant 命名空间，匹配 name=merchant_login_api
                 fetch("{% url 'merchant:merchant_login_api' %}", {
                     method: 'POST',
                     headers: {

@@ -1,4 +1,3 @@
-<!-- merchant_list.html -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -39,11 +38,11 @@
 
         <!-- 商家卡片列表 -->
         <div class="row mt-4" id="merchantList">
-            <!-- 动态渲染商家（JS通过API获取数据） -->
+            <!-- 动态渲染商家 -->
         </div>
     </div>
 
-    <!-- 购物车模态框（点击"加购"弹出） -->
+    <!-- 购物车模态框 -->
     <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -106,7 +105,7 @@
                         <input type="datetime-local" class="form-control" id="diningTime" required>
                     </div>
 
-                    <!-- 外卖地址（动态加载用户地址） -->
+                    <!-- 外卖地址 -->
                     <div id="addressContainer" class="mb-3 d-none">
                         <label class="form-label">选择地址</label>
                         <select class="form-select" id="addressSelect" required>
@@ -145,7 +144,7 @@
             let cartData = [];
             let currentMerchantId = 0;
 
-            // 1. 加载商家列表（页面初始化）
+            // 1. 加载商家列表
             loadMerchants();
 
             // 2. 搜索商家
@@ -154,7 +153,7 @@
                 loadMerchants(keyword);
             });
 
-            // 3. 配送方式切换（堂食/外卖）
+            // 3. 配送方式切换
             $('input[name="deliveryType"]').change(function() {
                 const type = $(this).val();
                 if (type === '0') { // 堂食
@@ -176,7 +175,7 @@
                 // 显示结算模态框，传递商家ID
                 $('#merchantId').val(currentMerchantId);
                 $('#checkoutModal').modal('show');
-                // 初始化取餐时间（当前时间+10分钟）
+                // 初始化取餐时间
                 const now = new Date();
                 now.setMinutes(now.getMinutes() + 10);
                 $('#diningTime').val(now.toISOString().slice(0, 16));
@@ -217,7 +216,7 @@
                     }))
                 };
 
-                // 调用提交订单API（修正命名空间前缀）
+                // 调用提交订单API
                 fetch("{% url 'user:submit_order_api' %}", {
                     method: 'POST',
                     headers: {
@@ -229,7 +228,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.code === 1) {
-                        // 订单提交成功，跳转支付页（修正命名空间前缀）
+                        // 订单提交成功，跳转支付页
                         $('#checkoutMsg').removeClass('d-none text-danger').addClass('text-success');
                         $('#checkoutMsg').text(`订单创建成功，订单号：${data.order_no}，跳转支付...`);
                         setTimeout(() => {
@@ -252,7 +251,7 @@
             });
 
             // ---------------------- 工具函数 ----------------------
-            // 加载商家列表（修正命名空间前缀 + Logo路径核心修复）
+            // 加载商家列表
             function loadMerchants(keyword = '') {
                 fetch("{% url 'user:merchant_list_api' %}?keyword=" + encodeURIComponent(keyword), {
                     method: 'GET',
@@ -266,7 +265,6 @@
                         const merchants = data.data;
                         let html = '';
                         merchants.forEach(merchant => {
-                            // ✅ 直接使用后端返回的完整路径，无任何手动拼接
                             const logoUrl = merchant.logo || '/static/main/img/merchant/default_merchant.jpg';
                             html += `
                                 <div class="col-md-4">
@@ -298,7 +296,7 @@
                 });
             }
 
-            // 加载商家菜品列表（弹窗显示）（修正命名空间前缀）
+            // 加载商家菜品列表
             function loadDishList(merchantId, merchantName) {
                 fetch("{% url 'user:dish_list_api' %}?merchant_id=" + merchantId, {
                     method: 'GET',
@@ -441,7 +439,7 @@
                 });
             }
 
-            // 加载用户地址（修正命名空间前缀）
+            // 加载用户地址
             function loadUserAddresses() {
                 fetch("{% url 'user:address_list_api' %}", {
                     method: 'GET',

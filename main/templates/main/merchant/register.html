@@ -50,7 +50,6 @@
                         注：注册成功后，管理员将在1-3个工作日内审核，审核结果将通过短信通知
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <!-- 修正：添加 merchant 命名空间，匹配 name=merchant_login -->
                         <a href="{% url 'merchant:merchant_login' %}">已有账号？登录</a>
                         <button type="submit" class="btn btn-primary">注册</button>
                     </div>
@@ -89,7 +88,6 @@
                     category: category
                 };
 
-                // 修正：添加 merchant 命名空间，匹配 name=merchant_register_api
                 fetch("{% url 'merchant:merchant_register_api' %}", {
                     method: 'POST',
                     headers: {
@@ -104,7 +102,6 @@
                         $('#msg').removeClass('d-none text-danger').addClass('text-success');
                         $('#msg').text(data.msg);
                         setTimeout(() => {
-                            // 修正：跳转链接添加 merchant 命名空间
                             window.location.href = "{% url 'merchant:merchant_login' %}";
                         }, 3000);
                     } else {
